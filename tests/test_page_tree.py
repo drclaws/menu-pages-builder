@@ -425,7 +425,7 @@ class StaffPageTest(unittest.TestCase):
         self.assertEqual((rows[9]["name"], rows[9]["isPlusOne"], rows[9]["hostLine"]), ("", True, "Olga’s guest"))
         self.assertEqual((rows[19]["name"], rows[19]["isPlusOne"], rows[19]["hostLine"]), ("Greta", False, ""))
         self.assertEqual((rows[2]["name"], rows[3]["name"], rows[3]["tags"]), ("Peggy", "Victor", ["vegan"]))
-        self.assertEqual((rows[6]["name"], rows[6]["roleLabel"], rows[6]["isCouple"]), ("Vera", "bride", True))
+        self.assertEqual((rows[6]["name"], rows[6]["roleLabel"], rows[6]["isCouple"]), ("Vera", "host", True))
         self.assertEqual(rows[7]["tags"], ["no gluten"])
         self.assertEqual(rows[10]["tags"], ["no gluten", "no lactose"])
 

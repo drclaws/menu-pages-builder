@@ -895,7 +895,7 @@ class WidgetTests(unittest.TestCase):
         text = [visible_text(row) for row in rows]
         self.assertEqual(text[0], "1 Alyona no alcohol")
         self.assertEqual(text[1], "2 —")
-        self.assertEqual(text[3], "4 Vera · bride")
+        self.assertEqual(text[3], "4 Vera · host")
         self.assertEqual(text[8], "9 +1 · Olga’s guest, [name]")
         self.assertEqual(text[9], "10 Egor no gluten no lactose")
         self.assertEqual(text[10], "11 —")

@@ -59,12 +59,12 @@
       {
         "seat": 6,
         "name": "Maren",
-        "role": "bride"
+        "role": "host"
       },
       {
         "seat": 7,
         "name": "Linus",
-        "role": "groom",
+        "role": "host",
         "requirements": [
           "gluten"
         ]

@@ -116,8 +116,8 @@ _MOCKUP16_MENU = {
     "couple": {
         "label": COUPLE_LABEL,
         "members": [
-            {"seat": 4, "name": "Vera", "role": "bride"},
-            {"seat": 5, "name": "Ivan", "role": "groom"},
+            {"seat": 4, "name": "Vera", "role": "host"},
+            {"seat": 5, "name": "Ivan", "role": "host"},
         ],
     },
     "table": l_table_16(),
@@ -338,8 +338,8 @@ _RESERVED19_MENU = {
     "couple": {
         "label": COUPLE_LABEL,
         "members": [
-            {"seat": 6, "name": "Vera", "role": "bride"},
-            {"seat": 7, "name": "Ivan", "role": "groom", "requirements": ["gluten"]},
+            {"seat": 6, "name": "Vera", "role": "host"},
+            {"seat": 7, "name": "Ivan", "role": "host", "requirements": ["gluten"]},
         ],
     },
     "reservedSeats": [13],
