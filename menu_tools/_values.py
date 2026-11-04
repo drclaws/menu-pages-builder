@@ -13,8 +13,8 @@ Messages never quote the data.  A key is shown only when it looks like a
 field name or an id (`is_plain_key`); in strict mode (`known`), where a key
 may be somebody's name, only when it is one of the known names.  An id is
 shown only when it follows the id rule.  Messages have the form
-`field '<path>' <problem>`; the caller puts the name of the file or the
-record in front.
+`field '<path>' <problem>`; the caller puts the file or record name in
+front.
 
 Pure functions: no input/output and no printing (the two token generators
 alone read the random source).  Problems are returned as messages.  Standard
@@ -79,7 +79,7 @@ def show_key(key: Any, known: Collection[str] | None = None) -> str:
 def format_path(parts: Iterable[PathPart], known: Collection[str] | None = None) -> str:
     """`("sections", 3, "id")` -> `sections[3].id`; no parts -> `top level`.
 
-    `known` switches on the strict mode of `show_key` for the keys.
+    `known` switches `show_key` to strict mode for the keys.
     """
     text = ""
     for part in parts:
@@ -133,7 +133,7 @@ class DuplicateKey(NamedTuple):
     key: str
 
     def describe(self, known: Collection[str] | None = None) -> str:
-        """The message; `known` switches on the strict mode of `show_key`."""
+        """The message; `known` switches `show_key` to strict mode."""
         where = f"in '{format_path(self.path, known)}'" if self.path else "at the top level"
         return (
             f"duplicate key {show_key(self.key, known)} {where} "
@@ -200,7 +200,7 @@ def _find_duplicates(
 # Identifiers
 # --------------------------------------------------------------------------
 
-#: Lowercase latin letters and digits in words joined by single hyphens,
+#: Lowercase Latin letters and digits in words joined by single hyphens,
 #: starting with a letter (`--` stays free as a separator of composite ids).
 _ID_RE = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
 MAX_ID_LENGTH = 32
@@ -321,7 +321,7 @@ def generate_token() -> str:
             return token
 
 
-#: The longest prefix that still leaves room for `-` and the random tail.
+#: The longest prefix that leaves room for `-` and the random tail.
 MAX_TOKEN_PREFIX_LENGTH = MAX_NAME_LENGTH - 1 - TOKEN_SUFFIX_LENGTH
 
 

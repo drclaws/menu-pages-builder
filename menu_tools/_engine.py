@@ -56,9 +56,9 @@ ASSETS_DIRNAME = "assets"
 #: `<out>/assets/` for everything the pages share; nothing else.
 PAGE_FILE = "index.html"
 
-#: `build --base-path`: the path from the root of the site under which the
-#: contents of `--out` are published.  Every URL of the output starts with it:
-#: `<base path>/assets/…`, and the page of a guest is `<base path>/<token>/`.
+#: `build --base-path`: the path from the site root under which the contents
+#: of `--out` are published.  Every URL in the output starts with it:
+#: `<base path>/assets/…`, and a guest page is `<base path>/<token>/`.
 DEFAULT_BASE_PATH = "/"
 MAX_BASE_PATH_LENGTH = 200
 #: `/` or `/seg[/seg…]` with an optional trailing `/`.
@@ -69,7 +69,7 @@ OS_JUNK_FILES = frozenset({".DS_Store", "Thumbs.db", "desktop.ini"})
 
 #: Hosting limit for a single file.
 MAX_FILE_BYTES = 25 * 1024 * 1024
-#: The types of the files the build writes; a message about a path shows its
+#: The file types the build writes; a message about a path shows its
 #: extension only when it is one of them.
 SHOWN_EXTENSIONS = frozenset({".html", ".css", ".js", ".svg"})
 #: Never published, wherever they turn up in the output.
@@ -135,16 +135,16 @@ class Report:
     `on_warn` lets the caller show warnings as soon as they appear (the CLI
     prints them to stderr); errors are always reported together at the end.
 
-    The report also remembers the tokens of the records as soon as
-    `guests.json` is read (`remember_tokens`), so that whatever prints the
-    messages of a command can hide them (`redact`): a path that a message
-    shows may lead through the directory of a page.
+    The report also remembers the records' tokens as soon as `guests.json`
+    is read (`remember_tokens`), so that whatever prints a command's
+    messages can hide them (`redact`): a path in a message may lead through
+    a page directory.
     """
 
     def __init__(self, on_warn: Callable[[str], None] | None = None) -> None:
         self.errors: list[str] = []
         self.warnings: list[str] = []
-        #: The valid tokens of the records, in lower case.
+        #: The records' valid tokens, in lower case.
         self.tokens: frozenset[str] = frozenset()
         self._on_warn = on_warn
 
@@ -211,7 +211,7 @@ _WITH_RE = re.compile(r"with\s*:\s*(\S*)\Z")
 #: Template syntax that must not survive rendering.
 _LEFTOVER_RE = re.compile(rf"\{{\{{|\}}\}}|<!--\s*(?:{_DIRECTIVE_WORDS})", re.IGNORECASE)
 
-#: Fragments of the template live in this directory next to `template.html`.
+#: The template's fragments live in this directory next to `template.html`.
 #: They are code: read once before rendering and never copied to the output.
 FRAGMENTS_DIRNAME = "fragments"
 FRAGMENT_SUFFIX = ".html"
@@ -1507,8 +1507,8 @@ class _HtmlChecker(HTMLParser):
             self.policy.problem(line, '<meta http-equiv="refresh"> is not allowed')
             return
         if key in _META_URL_KEYS:
-            # a path from the site root, a file of the output: the build never
-            # knows the address of the site, an absolute URL is an error
+            # a path from the site root to a file in the output: the build
+            # never knows the site's address, so an absolute URL is an error
             self.policy.check_resource(line, f"<meta {key}>", content)
             return
         external = _EXTERNAL_TEXT_RE.search(content)
@@ -1553,7 +1553,7 @@ def check_html(
     """Problems of one HTML document as (line, message) pairs.
 
     `exists` tells whether a file (relative path with '/') is in the output,
-    `is_dir` does the same for directories (only used to word the messages).
+    `is_dir` does the same for directories (only for the wording of messages).
     The output is published under `base_path`: a local URL outside it points
     outside the output, one inside it is looked up without the base path.
     Whatever the parser may read differently from a browser is an error;
@@ -1751,15 +1751,14 @@ def _scan_output(root: Path) -> tuple[dict[str, int], list[str], list[str]]:
 def _check_output_tree(
     files: dict[str, int], directories: Sequence[str], pages: Iterable[str]
 ) -> list[str]:
-    """Allow-list of the top of the output and of the directories of the pages.
+    """Allow-list of the output's top level and of the page directories.
 
-    `pages` are the tokens of the pages: the top of the output holds
-    `assets/` and one directory `<token>/` per page with `index.html` and
-    nothing else.  Anywhere in the output dot-files, dot-directories and the
-    types of `FORBIDDEN_OUTPUT_EXTENSIONS` are refused, and no file may be
-    larger than `MAX_FILE_BYTES`; which files `assets/` holds is checked by
-    the caller (`menu_tools._output.asset_problems`).  Paths are shown by
-    `_output_path`.
+    `pages` are the page tokens: the top level holds `assets/` and one
+    `<token>/` directory per page with `index.html` and nothing else.
+    Anywhere in the output, dot-files, dot-directories and the types in
+    `FORBIDDEN_OUTPUT_EXTENSIONS` are refused, and no file may be larger
+    than `MAX_FILE_BYTES`; the caller checks which files `assets/` holds
+    (`menu_tools._output.asset_problems`).  `_output_path` shows the paths.
     """
     problems: list[str] = []
     expected_dirs = set(pages)
@@ -1824,11 +1823,11 @@ def check_output(
     * CSS: `url()` and `@import` point at local files that exist (relative
       URLs of a CSS file are resolved against that file, root-absolute ones
       must lie under `base_path`); no CSS escapes that could hide a URL;
-    * SVG: no scripts, styles sheets, event handlers, `<foreignObject>`,
+    * SVG: no scripts, style sheets, event handlers, `<foreignObject>`,
       entities or external references (see `check_svg`).
 
-    Messages never quote page text, and the directories of the pages are
-    shown as `…` (`_output_path`): they are named after the tokens.
+    Messages never quote page text, and page directories are shown as `…`
+    (`_output_path`): they are named after the tokens.
     """
     pages = list(pages)
     root = Path(out_dir)
@@ -1841,7 +1840,7 @@ def check_output(
     problems += _check_output_tree(files, directories, pages)
 
     # only the directories of the shared files may be named in a message: the
-    # rest are the directories of the pages
+    # rest are page directories
     known_dirs = {
         relative
         for relative in directories
@@ -1918,7 +1917,7 @@ def display_path(path: Path | str) -> str:
     return shown
 
 
-#: A run of the characters of a token (`redact_tokens`).
+#: A run of token characters (`redact_tokens`).
 _TOKEN_RUN_RE = re.compile(r"[A-Za-z0-9_-]+")
 #: A path in a message: a word with at least one separator in it.
 _PATH_WORD_RE = re.compile(r"[^\s/\\]*(?:[/\\][^\s/\\]*)+")
@@ -1937,8 +1936,8 @@ def redact_tokens(text: Any, tokens: Collection[str]) -> str:
     `<token>.zip`).  A token inside a longer name (`<token>_old`) is not a
     component and stays; the words of the message stay as they are, so the
     mask never tells that a token equals one of them.  Whatever path a
-    message shows - `--out`, a temporary directory next to it, the file of
-    an error - the directory of a page does not reveal its token."""
+    message shows - `--out`, a temporary directory next to it, the file an
+    error is about - a page directory does not reveal its token."""
     text = str(text)
     if not tokens:
         return text
@@ -1955,9 +1954,9 @@ def redact_tokens(text: Any, tokens: Collection[str]) -> str:
 def _output_path(relative: str) -> str:
     """A path inside the output for a message.
 
-    Every entry at the top of the output but `assets` is the directory of a
-    page, named after its token, or something the build never writes: it is
-    shown as `…`, unless its name has a dot (a token never has one).
+    Every top-level entry except `assets` is a page directory, named after
+    its token, or something the build never writes: it is shown as `…`,
+    unless its name has a dot (a token never has one).
     """
     top, sep, rest = relative.partition("/")
     if top != ASSETS_DIRNAME and "." not in top:
@@ -1988,15 +1987,15 @@ def check_out_dir(
     The build replaces `--out` completely, so it must not be the code or data
     directory (or a parent of one), the working directory (or a parent of
     it), the home directory, the file system root, or a directory inside the
-    tree that is copied into the output (`assets/` of the code).  An existing
+    tree that is copied into the output (the code's `assets/`).  An existing
     directory is replaced only when it is empty or looks like the output of a
     previous build.
 
     The messages call the directory `--out` and never repeat its path nor
     the name of anything in it: it may point inside a previous build by
-    mistake, at the directory of a page, and the data is not read yet, so no
-    token is known to hide.  An error of the file system is reported by its
-    reason alone, without the file it happened on.
+    mistake, at a page directory, and the data has not been read at that
+    point, so no token is known to hide.  A file system error is reported
+    by its reason alone, without the file it happened on.
     """
     try:
         _check_out_dir(Path(out_dir), Path(code_dir), Path(data_dir))
@@ -2050,8 +2049,8 @@ def _check_out_dir(out_dir: Path, code_dir: Path, data_dir: Path) -> None:
 
 
 def _directory_entries(path: str) -> dict[str, os.DirEntry] | None:
-    """The entries of a directory but the files of the operating system;
-    None when it cannot be read."""
+    """A directory's entries except the operating system's own files; None
+    when it cannot be read."""
     try:
         with os.scandir(path) as iterator:
             return {entry.name: entry for entry in iterator if entry.name not in OS_JUNK_FILES}
@@ -2104,18 +2103,18 @@ def check_replaceable(out_dir: Path | str) -> None:
 
     A directory qualifies when it is empty or holds what a build writes:
     `assets/`, a real directory with `app.css` and `app.js` (every build
-    writes them), and the directories of the pages - real directories named
-    like a token with `index.html` (a regular file) alone; nothing else
-    (files created by the operating system are ignored).  No marker file is
-    written into the output: its contents stay limited to what the pages
-    need.  Anything else is somebody's directory and is never replaced:
-    pages without `assets/`, `assets/` without `app.css` and `app.js`, any
-    other entry at the top, the directory of a single page.
+    writes them), and the page directories - real directories named like a
+    token with `index.html` (a regular file) alone; nothing else (files
+    created by the operating system are ignored).  No marker file is written
+    into the output: its contents stay limited to what the pages need.
+    Anything else is somebody's directory and is never replaced: pages
+    without `assets/`, `assets/` without `app.css` and `app.js`, any other
+    top-level entry, a single page directory.
 
     The messages never repeat the path of `--out` nor the name of anything
-    in it - at most they count the entries: the data is not read yet, so no
-    token is known, and `--out` may hold the pages of a previous build.  An
-    error of the file system names no file either.
+    in it - at most they count the entries: the data has not been read at
+    that point, so no token is known, and `--out` may hold the pages of a
+    previous build.  A file system error names no file either.
     """
     try:
         _check_replaceable(Path(out_dir))
@@ -2399,7 +2398,7 @@ def write_pages(stage: Path, pages: Iterable[tuple[str, str]]) -> int:
 
 
 def base_path_argument(value: str) -> str:
-    """`build --base-path`: a bad value is a bad command line (code 2)."""
+    """`build --base-path`: a bad value is a usage error (code 2)."""
     try:
         return check_base_path(value)
     except ValueError as exc:
@@ -2407,8 +2406,8 @@ def base_path_argument(value: str) -> str:
 
 
 def token_prefix(value: str) -> str:
-    """`token --prefix NAME`: the characters of a token; the value is not
-    repeated in the message."""
+    """`token --prefix NAME`: token characters only; the message does not
+    repeat the value."""
     problem = check_token_prefix(value)
     if problem:
         raise argparse.ArgumentTypeError(problem)
@@ -2434,7 +2433,7 @@ _PERCENT_CREDENTIALS_RE = re.compile(r"%(?:40|3a)", re.IGNORECASE)
 
 def parse_published_url(value: str) -> str:
     """`links --url`: the http(s) address where the output directory is
-    published (the address of the site and `--base-path` of the build); the
+    published (the site's address and the build's `--base-path`); the
     trailing '/' is dropped."""
     value = value.strip()
     try:

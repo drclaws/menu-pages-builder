@@ -3,42 +3,41 @@
 A tree is what the template and its fragments render: plain dicts, lists,
 strings, numbers and booleans, in which every field always exists (`""`,
 `[]`, `false`, `0` or `null` when there is nothing to show).  The data must
-have passed the checks of `menu_tools._schema`.
+have passed the checks in `menu_tools._schema`.
 
 Privacy by construction.  A guest page is built from two projections only:
-`public_menu` (the shared texts outside the `staff` keys and outside the
-parts for the staff only, the names and ingredients of the dishes the guests
-see, their sets and the guest fields of their drinks, the table) and
-`own_record` (the name, the seat numbers, which of them a companion takes,
-the names of the seats, the switches and notes of the sections).  The names
-of the seats of the own record are in the names under the plan (`names`)
-and in the text of the plan (`scheme.mine`) and nowhere else on the page.
-Tokens, other records, requirements, allergens, the couple and the names of
-the other seats never reach the code of a guest page.  The staff page reads
-the whole menu and the records without their tokens and notes.  No page
-holds a token: the token of a record names the directory of its page and
-nothing else.
+`public_menu` (the shared texts outside the `staff` keys and the staff-only
+parts, the names and ingredients of the dishes guests see, their sets, the
+guest fields of their drinks, the table) and `own_record` (the name, the
+seat numbers, which of them a companion takes, the seat names, the section
+switches and notes).  The record's seat names appear in the names under the
+plan (`names`) and in the plan's text (`scheme.mine`), nowhere else on the
+page.  Tokens, other records, requirements, allergens, the couple and the
+names at other seats never reach the code that builds a guest page.  The
+staff page reads the whole menu and the records without their tokens and
+notes.  No page holds a token: a record's token names its page directory
+and nothing else.
 
-A guest page names no seat by its number: its plan of the table shows the
-seats of the record in colours of their own (`_table.SEAT_COLOURS`) and the
-names under the plan in the same colours, in the order of the seats of the
-record.
+A guest page names no seat by its number: its table plan shows the
+record's seats each in a colour of its own (`_table.SEAT_COLOURS`), and the
+names under the plan use the same colours, in the order of the record's
+seats.
 
-The line of the sections at the top of a page (`nav` of the root) links the
-sections of that page that have a label (`nav` of a section), in their
-order: a section the page does not show has no link there.
+The navigation bar at the top of a page (`nav` in the root) links the
+page's sections that have a label (a section's `nav`), in page order: a
+section the page does not show has no link there.
 
-A heading widget is the head of a part of its section: the widgets after it
-on the same page, up to the next heading.  A heading with no other widget
-under it on a page is left out of that page, so a section that keeps only
-headings is empty there.  A guest page shows the texts of a heading outside
-its `staff` key, the staff page those under it when they are set.  A set
-card under a heading has the heading level below it (`nested`), and its tab
-list is labelled by the heading.
+A heading widget heads a part of its section: the widgets after it on the
+same page, up to the next heading.  A heading with no other widget under it
+on a page is left out of that page, so a section that keeps only headings
+is empty there.  A guest page shows a heading's texts outside its `staff`
+key; the staff page shows those under it when they are set.  A set card
+under a heading uses the next heading level (`nested`), and the heading
+labels its tab list.
 
-The words that are joined with numbers and names come from
-`menu_tools._words`; the scheme of the table is the object of
-`menu_tools._table` (`guest_scheme`, `staff_scheme`).
+The words joined with numbers and names come from `menu_tools._words`; the
+table scheme is built by `menu_tools._table` (`guest_scheme`,
+`staff_scheme`).
 
 Standard library only; no input/output.
 """
@@ -61,7 +60,7 @@ STAFF_FIELDS = ("updated", "contact", "reminder")
 
 class Settings(NamedTuple):
     """What a tree takes from the build: the address of the shared files
-    (`<base path>/assets`) and the colour of the browser interface."""
+    (`<base path>/assets`) and the browser interface colour."""
 
     assets_path: str = "/assets"
     theme_color: str = ""
@@ -73,9 +72,9 @@ DEFAULT_SETTINGS = Settings()
 class Page(NamedTuple):
     """The tree of one page and the record it belongs to."""
 
-    #: The position of the record in `guests.json`, from 1.
+    #: The record's position in `guests.json`, from 1.
     number: int
-    #: The directory of the page.
+    #: The page directory.
     token: str
     tree: dict
 
@@ -93,7 +92,7 @@ class Usage:
 
 
 class Trees(NamedTuple):
-    #: The pages of the guests, in the order of `guests.json`.
+    #: The guest pages, in `guests.json` order.
     guests: list[Page]
     #: The staff page; None without a staff record.
     staff: Page | None
@@ -130,7 +129,7 @@ def _root(source: dict, settings: Settings, *, is_staff: bool) -> dict:
 
 
 def _add_section(root: dict, built: dict | None, label: str) -> None:
-    """A section of the page and, with a label, its link in the line."""
+    """A section of the page and, with a label, its link in the navigation bar."""
     if built is None:
         return
     root["sections"].append(built)
@@ -168,8 +167,8 @@ def _dish(dish: dict) -> dict:
 def _set(
     set_id: str, item: dict, widget_dom_id: str, courses: list[dict], swap_lines: list[str], nested: bool
 ) -> dict:
-    """A set card; `nested`: it stands under the heading of a part (its own
-    title is a level lower).  The flag is on every card: the fragment reads
+    """A set card; `nested`: it stands under a part's heading (its own title
+    is a level lower).  Every card carries the flag, since the fragment reads
     the cards, not the widget."""
     return {
         "id": set_id,
@@ -185,9 +184,9 @@ def _set(
 
 
 def _parts(shown: list[tuple[int, dict]]) -> list[tuple[int, dict]]:
-    """The widgets a page shows of a section, (position in the data, widget)
-    in their order, without the headings nothing stands under: a heading
-    followed by another heading or by the end of the section."""
+    """The widgets of a section that a page shows, as (position in the data,
+    widget) in order, without headings that have nothing under them: a
+    heading followed by another heading or by the end of the section."""
     kept = []
     for at, (position, widget) in enumerate(shown):
         if widget["type"] == HEADING:
@@ -215,7 +214,7 @@ def _seating(base: dict) -> dict:
 
 
 def _couple(couple: dict) -> dict:
-    """The couple as the plan of the table needs it: label, arm and seats."""
+    """The couple as the table plan needs it: label, arm and seats."""
     return {
         "couple_seats": [member["seat"] for member in couple.get("members", [])],
         "couple_label": _text(couple.get("label")) or None,
@@ -231,12 +230,12 @@ def _couple(couple: dict) -> dict:
 def public_menu(menu: dict) -> dict:
     """The part of the menu every guest page is built from.
 
-    Sections and widgets for the staff only are left out (a widget keeps its
-    place as None: the widgets of a section are numbered by their position
-    in the data); so are the `staff` keys, the requirements, the allergens,
-    the couple (the plan of a guest does not show it), the fields of the
-    dishes, sets and drinks other than those a guest sees, and every dish,
-    set or drink no part for the guests refers to.
+    Staff-only sections and widgets are left out (a widget keeps its place
+    as None: a section's widgets are numbered by their position in the
+    data); so are the `staff` keys, the requirements, the allergens, the
+    couple (a guest's plan does not show it), the dish, set and drink fields
+    a guest does not see, and every dish, set or drink that no part for the
+    guests refers to.
     """
     public: dict[str, Any] = {
         "coupleNames": menu["coupleNames"],
@@ -325,9 +324,9 @@ def _public_dish(menu: dict, dish_id: str, public: dict) -> None:
 def own_record(record: dict) -> dict:
     """The part of a record its own page is built from.
 
-    The token and the requirements of the seats are left out: the page of a
-    guest shows neither.  `name` of a seat is its name ("" without one): the
-    names under the plan show who sits at which seat of the record.
+    The token and the seat requirements are left out: a guest page shows
+    neither.  A seat's `name` is its name ("" without one): the names under
+    the plan show who sits at which of the record's seats.
     """
     sections = {}
     for section_id, override in (record.get("sections") or {}).items():
@@ -359,7 +358,7 @@ def own_record(record: dict) -> dict:
 
 
 class _GuestPage:
-    """The tree of the page of one guest, from `public_menu` and `own_record`."""
+    """The tree of one guest's page, from `public_menu` and `own_record`."""
 
     def __init__(self, public: dict, own: dict, settings: Settings, usage: Usage):
         self.public = public
@@ -405,8 +404,8 @@ class _GuestPage:
         return tree
 
     def widget(self, widget: dict, dom_id: str, labelled_by: str, heading: str | None = None) -> dict:
-        """The node of a widget; `heading`: the title id of the part it
-        stands in, None outside a part."""
+        """A widget's node; `heading`: the title id of the part it stands
+        in, None outside a part."""
         kind = widget["type"]
         base = {"type": kind, "domId": dom_id, "labelledBy": labelled_by}
         public = self.public
@@ -453,8 +452,8 @@ class _GuestPage:
         raise ValueError(f"unknown widget type: {kind}")  # pragma: no cover - checked data
 
     def seating(self, widget: dict, base: dict) -> dict:
-        """The seats of the record: a name per seat in the colour of its
-        place in the record, and the plan with the seats in those colours."""
+        """The record's seats: a name per seat, coloured by the seat's place
+        in the record, and the plan with the seats in those colours."""
         seats = self.own["seats"]
         numbers = [seat["number"] for seat in seats]
         names = _words.seat_names(self.own["name"], [seat["name"] for seat in seats])
@@ -475,8 +474,8 @@ class _GuestPage:
 
 
 class _StaffPage:
-    """The tree of the staff page: the whole menu, every seat, no token and
-    no note of a guest."""
+    """The staff page tree: the whole menu, every seat, no token and no
+    guest's note."""
 
     def __init__(self, menu: dict, records: list, settings: Settings, usage: Usage):
         self.menu = menu
@@ -499,9 +498,9 @@ class _StaffPage:
                 "hostName": "",
                 "requirements": legend_order(member.get("requirements", [])),
             }
-        # default: the staff sees what at least one guest sees, and the parts
-        # for the staff: a section or a widget hidden by default but switched
-        # on for one guest is served too
+        # default: the staff sees what at least one guest sees, plus the
+        # staff-only parts: a section or widget hidden by default but
+        # switched on for one guest is served too
         self.switched_sections: set[str] = set()
         self.switched_widgets: set[tuple[str, str]] = set()
         for record in records:
@@ -584,8 +583,8 @@ class _StaffPage:
         return tree
 
     def widget(self, widget: dict, dom_id: str, labelled_by: str, heading: str | None = None) -> dict:
-        """The node of a widget; `heading`: the title id of the part it
-        stands in, None outside a part."""
+        """A widget's node; `heading`: the title id of the part it stands
+        in, None outside a part."""
         kind = widget["type"]
         base = {"type": kind, "domId": dom_id, "labelledBy": labelled_by}
         menu = self.menu
@@ -668,8 +667,8 @@ class _StaffPage:
         return item
 
     def swaps(self, swaps: dict) -> list[tuple[list[int], str, str]]:
-        """(seats, requirement id, text) of every swap a seat needs, by the
-        smallest seat."""
+        """(seats, requirement id, text) of every swap a seat needs, ordered
+        by the lowest seat."""
         found = [
             (self.seats_of[requirement_id], requirement_id, text)
             for requirement_id, text in swaps.items()
@@ -737,10 +736,9 @@ def build_trees(menu: dict, guests: list, report: Any, settings: Settings = DEFA
     """The trees of every page of checked data.
 
     A guest page whose table plan cannot be laid out (`_table.TableError`,
-    which names seat numbers at most; checked data never gets one) is an
-    error of its record and has no tree.  The staff tree is built
-    even without a staff record, for `Trees.usage`, but returned only with
-    one.
+    which names seat numbers at most; checked data never raises it) is an
+    error of its record and has no tree.  The staff tree is built even
+    without a staff record, for `Trees.usage`, but returned only with one.
     """
     usage = Usage()
     public = public_menu(menu)

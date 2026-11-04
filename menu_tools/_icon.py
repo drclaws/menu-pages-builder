@@ -1,7 +1,7 @@
-"""The icon of the pages, derived from the design tokens.
+"""The page icon, derived from the design tokens.
 
 ``favicon.svg`` is a small neutral mark (plain geometry).  Its colours come
-from the ``:root`` tokens of ``assets/app.css``, so the icon follows the
+from the ``:root`` tokens in ``assets/app.css``, so the icon follows the
 design: change the tokens and build again.  The build writes it straight into
 the output directory; nothing generated is kept in the repository.  The same
 input gives a byte-identical file.

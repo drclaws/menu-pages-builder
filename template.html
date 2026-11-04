@@ -17,23 +17,23 @@
 <body>
 
 <!-- The frame of a menu page. The sections come in order from partials/sections:
-     each one is the fragment of its type (sections/cover, sections/custom), the
+     each is the fragment of its type (sections/cover, sections/custom), and the
      widgets are the fragments widgets/<type>. The markup of sections and widgets
-     lives in fragments/; here are only the head, the staff bar, the line of the
-     sections, the main element and the staff footer.
-     The line of the sections (partials/section-nav) stands right before the main
-     element, the first element of the body of a guest page: it links the
-     sections of the page that have a label (nav) and is left out when none has.
+     lives in fragments/; this file holds only the head, the staff bar, the
+     navigation bar, the main element and the staff footer.
+     The navigation bar (partials/section-nav) stands right before the main
+     element, as the first element in the body of a guest page: it links the
+     page's sections that have a label (nav) and is left out when none has one.
      The class of the html element names the audience (guest or staff): the style
      sheet aligns and sizes the page by it. The staff bar and the footer with the
      contact on the night exist on the staff page alone, outside the sections, so
      they stay even without a cover; the footer is left out when there is neither
      a contact nor a reminder. The title is the same on every page; the pages have
      no link preview tags (a menu link is not meant for sharing) and ask search
-     engines to keep away. Every address is a path from the root of the site: the
+     engines to keep away. Every address is a path from the site root: the
      styles, the script and the icon live in assetsPath.
-     Conditions stand in the lines of the markup: a missing value leaves no empty
-     line behind. -->
+     Each condition sits on the line of markup it controls, so a missing value
+     leaves no empty line behind. -->
 <!-- if:isStaff -->
 <header class="staff-bar">
   <p class="container staff-bar__inner"><strong class="staff-bar__title">Staff version · not for guests</strong><!-- if:staff.updated --> <span class="staff-bar__updated">updated {{staff.updated}}</span><!-- endif --></p>

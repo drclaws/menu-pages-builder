@@ -6,37 +6,36 @@
     python3 build.py links    --url URL [--data DIR]
     python3 build.py token    [--prefix NAME]
 
-The builder writes a page per guest and a staff page for the restaurant, each
-at a secret address `<base path>/<token>/`.  Only the Python 3 standard library
-is used (Python >= 3.10).
+The builder writes a page for every guest and a staff page for the
+restaurant, each at a secret address `<base path>/<token>/`.  It uses only
+the Python 3 standard library (Python >= 3.10).
 
 `validate` reads `menu.json` and `guests.json` in DIR (by default
 `examples/data` next to this script), checks them, builds the page trees in
 memory (that is how it learns what the pages show) and prints a summary.
 
-`build` does the same and renders every page with `template.html` and its
-fragments, then writes the output: `<token>/index.html` for every guest record
-and for the staff record, and `assets/` with the style sheet and the script of
-the code and `favicon.svg`, generated from the design tokens of
-`assets/app.css` - nothing else.  The output is assembled next to `--out`
-(`dist` in the current directory by default) and replaces it only when every
-check has passed: nothing but the expected files, no external resources, no
-inline scripts or styles, every local URL resolves inside the output, and no
-file holds the token of a record (a token is only the name of the directory
-of its page).  Its
-contents are published under `--base-path` (`/` by default): every URL of the
-output starts with it, and a local address outside it is an error - the pages
-lead nowhere else on the site.  Two builds of the same data are identical
-byte for byte.
+`build` does the same, renders every page with `template.html` and its
+fragments, and writes the output: `<token>/index.html` for every guest
+record and for the staff record, plus `assets/` with the style sheet and
+the script from the code and a `favicon.svg` generated from the design
+tokens in `assets/app.css` - nothing else.  The output is assembled next to
+`--out` (`dist` in the current directory by default) and replaces it only
+when every check has passed: only the expected files, no external
+resources, no inline scripts or styles, every local URL resolves inside the
+output, and no file holds a record's token (a token is only the name of its
+page directory).  The output is published under `--base-path` (`/` by
+default): every URL in it starts with that path, and a local address
+outside it is an error - the pages lead nowhere else on the site.  Two
+builds of the same data are identical byte for byte.
 
-`links` checks the data as `validate` does and prints the address of every
-page, `URL/<token>/` after the name of its guest record and a tab, the staff
-page last after `staff`; it prints personal data, so it is meant for local
-use only and refuses to run in CI.  `token` prints a new token: fully random
-(as the staff record needs it) or `NAME-xxxx`, readable with a random tail.
+`links` checks the data as `validate` does and prints every page address:
+the guest record's name, a tab and `URL/<token>/`, with the staff page last
+after `staff`.  It prints personal data, so it is meant for local use only
+and refuses to run in CI.  `token` prints a new token: fully random (as the
+staff record needs) or `NAME-xxxx`, readable with a random tail.
 
-Warnings and errors go to stderr; they never quote the data, and a token that
-is part of a path in a message is hidden.  A message about a record names it
+Warnings and errors go to stderr; they never quote the data, and a token in
+a path is hidden.  A message about a record names it
 `guests.json: guest #N`, N being its position in `guests.json` (the staff
 record counts too).
 
@@ -85,8 +84,8 @@ COMMANDS = {
 
 
 def _base_path_type(value: str) -> str:
-    """`build --base-path`: `/` or `/seg[/seg…]` (a bad value is a bad
-    command line, and it is not repeated)."""
+    """`build --base-path`: `/` or `/seg[/seg…]` (a bad value is a usage
+    error, and the message does not repeat it)."""
     return _core.base_path_argument(value)
 
 
@@ -97,12 +96,12 @@ def _url_type(value: str) -> str:
 
 
 def _prefix_type(value: str) -> str:
-    """`token --prefix`: the characters of a token (A-Z, a-z, 0-9, '_' and '-')."""
+    """`token --prefix`: token characters only (A-Z, a-z, 0-9, '_' and '-')."""
     return _core.token_prefix(value)
 
 
 def make_parser() -> argparse.ArgumentParser:
-    """The command line parser: a required subcommand."""
+    """The command-line parser: a required subcommand."""
     parser = argparse.ArgumentParser(
         prog=Path(__file__).name,
         description="Builder of personal dinner-menu pages.",
@@ -165,7 +164,7 @@ def make_parser() -> argparse.ArgumentParser:
 
 
 class Data(NamedTuple):
-    """Checked data and the trees of its pages."""
+    """Checked data and its page trees."""
 
     menu: dict
     guests: list
@@ -179,10 +178,10 @@ def load_data(data_dir: Path | str, report: Any, settings: Any = None) -> Data:
     """Read and check `menu.json` and `guests.json` in `data_dir`, then build
     the page trees once.
 
-    The order matters: `menu.json` first, because the keys of `guests.json`
-    are shown in messages only when they are field names of the format or ids
-    declared in `menu.json`; then the records; then the trees, which report a
-    table plan that does not fit and tell what the pages show.  All errors
+    The order matters: `menu.json` first, because messages show a key of
+    `guests.json` only when it is a field name of the format or an id
+    declared in `menu.json`; then the records; then the trees, which report
+    a table plan that does not fit and tell what the pages show.  All errors
     are collected and raised together as a `ValidationError` (warnings go to
     the report as they come).
     """
@@ -214,8 +213,8 @@ def summary(data: Data) -> str:
 
 
 def pages_of(data: Data) -> list:
-    """Every page (`menu_tools._page.Page`): the guests in the order of
-    `guests.json`, then the staff page, if any."""
+    """Every page (`menu_tools._page.Page`): the guests in `guests.json`
+    order, then the staff page, if any."""
     staff = [data.trees.staff] if data.trees.staff is not None else []
     return [*data.trees.guests, *staff]
 
@@ -230,8 +229,8 @@ def _stderr(message: str) -> None:
 
 
 def cli_report() -> Any:
-    """The report of a command: warnings go to stderr at once, with the
-    tokens it has seen hidden (`Report.redact`)."""
+    """A command's report: warnings go to stderr at once, with every token
+    it has seen hidden (`Report.redact`)."""
 
     def warn(message: str) -> None:
         _stderr(f"warning: {report.redact(message)}")
@@ -278,9 +277,9 @@ def check_out(out_dir: Path, data_dir: Path) -> None:
 
     First not inside `--data`, then the rules of `check_out_dir`: not the
     code, the data or the working directory nor a parent of one, not inside
-    `assets/` of the code, and an existing directory only when it looks like
-    a previous build.  The messages never repeat a path: the data is not read
-    yet, so no token is known to hide.
+    the code's `assets/`, and an existing directory only when it looks like
+    a previous build.  The messages never repeat a path: the data has not
+    been read at this point, so no token is known to hide.
     """
     if is_inside(out_dir, data_dir, strict=True):
         raise _core.BuildError(
@@ -291,9 +290,9 @@ def check_out(out_dir: Path, data_dir: Path) -> None:
 
 
 def load_palette() -> Any:
-    """The colours of the design tokens of `assets/app.css` (the colour of the
-    browser interface and the icon); `assets/favicon.svg` of the code would
-    take the place of the generated icon and is refused."""
+    """The colours of the design tokens in `assets/app.css` (for the browser
+    interface and the icon); an `assets/favicon.svg` in the code would take
+    the place of the generated icon and is refused."""
     assets = CODE_DIR / ASSETS_DIR
     try:
         taken = sorted(name for name in os.listdir(assets) if name.lower() == FAVICON_FILE)
@@ -314,8 +313,8 @@ def load_palette() -> Any:
 
 
 def render_page(template: Any, tree: dict) -> str:
-    """One page: the template rendered on its tree, without HTML comments
-    (notes of the template are never published)."""
+    """One page: the template rendered with its tree, without HTML comments
+    (template notes are never published)."""
     return _core.strip_html_comments(template.render(tree), template.name)
 
 
@@ -323,12 +322,12 @@ def render_pages(template: Any, pages: list) -> list[tuple[str, str]]:
     """(token, HTML) of every page, rendered in memory: a broken template
     leaves no half-written output behind.
 
-    A problem of the template is reported once for all the pages it hits:
+    A template problem is reported once for all the pages it affects:
     `guests.json: guest #N: <problem>` for one record,
     `<k> guest record(s): <problem>; first: guests.json: guest #N` for more.
     """
     rendered: list[tuple[str, str]] = []
-    failures: dict[str, list[int]] = {}  # problem -> numbers of the records
+    failures: dict[str, list[int]] = {}  # problem -> record numbers
     for page in pages:
         try:
             rendered.append((page.token, render_page(template, page.tree)))
@@ -353,7 +352,7 @@ def write_favicon(path: Path, palette: Any) -> None:
 
 def cmd_build(args: argparse.Namespace, report: Any) -> int:
     """Check `--out`, read the data, render the pages, write the output next
-    to `--out`, check it and swap it in; the log shows counters and paths
+    to `--out`, check it and swap it in; the log shows counts and paths
     (directories named after tokens are hidden), never data."""
     data_dir = _data_dir(args)
     out_dir = Path(args.out) if args.out is not None else DEFAULT_OUT_DIR
@@ -404,8 +403,8 @@ def cmd_build(args: argparse.Namespace, report: Any) -> int:
 
 
 def page_links(url: str, data: Data) -> list[str]:
-    """`<name><TAB><url>/<token>/` for every guest record in the order of
-    `guests.json` (the white space of the name collapsed), then
+    """`<name><TAB><url>/<token>/` for every guest record in `guests.json`
+    order (white space in the name collapsed), then
     `staff<TAB><url>/<token>/` for the staff record, if any."""
     lines = [
         f"{' '.join(data.guests[page.number - 1]['name'].split())}\t{url}/{page.token}/"
@@ -439,7 +438,7 @@ def cmd_token(args: argparse.Namespace, report: Any) -> int:
 # Running a command
 # --------------------------------------------------------------------------
 
-#: The function of every command.
+#: The function that runs each command.
 COMMAND_FUNCTIONS = {
     "build": cmd_build,
     "validate": cmd_validate,
@@ -468,8 +467,8 @@ def run_command(command: Any, args: argparse.Namespace) -> int:
         _stderr(f"{args.command}: failed")
         return EXIT_ERROR
     except OSError as exc:
-        # before the data is read no token is known to hide: the file is not
-        # named then (it may lie in the directory of a page)
+        # before the data is read no token is known to hide, so the file is
+        # not named (it may lie in a page directory)
         where = f": {_core.display_path(exc.filename)}" if exc.filename and report.tokens else ""
         _stderr(f"error: {report.redact(f'{exc.strerror or type(exc).__name__}{where}')}")
         _stderr(f"{args.command}: failed")
@@ -481,8 +480,8 @@ def run_command(command: Any, args: argparse.Namespace) -> int:
         if debug_enabled():
             traceback.print_exc()
         else:
-            # The message of the exception may quote the data, so only its
-            # type and the place in the code are shown.
+            # The exception message may quote the data, so only its type and
+            # its place in the code are shown.
             frames = traceback.extract_tb(exc.__traceback__)
             where = f" at {os.path.basename(frames[-1].filename)}:{frames[-1].lineno}" if frames else ""
             _stderr(f"error: internal error: {type(exc).__name__}{where} (set BUILD_DEBUG=1 for the traceback)")

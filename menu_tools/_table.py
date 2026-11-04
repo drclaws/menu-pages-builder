@@ -10,20 +10,20 @@ ordered list of seats, each on one side of an arm::
      "seats": [{"arm": "top", "side": "left"},
                {"arm": "top", "side": "top", "count": 5}, ...]}
 
-The number of a seat is its position in the expanded list of seats (`count`
-repeats an item).  The seats of a side are spread evenly and centred on the
-free part of the side, clockwise; `arms[].shift` moves the group of a side
-along it.  `seats[].align` lines seats up with other seats: an element per
-seat of the item, the number of another seat or null; such a seat takes the
-coordinate of that seat along its own side (x on the top and the bottom, y
-on the left and the right), and the other seats of its side are laid out
-around it (see `_place`).  The couple (their seats, label and arm) is a
-separate part of the menu data and comes in as parameters.
+A seat's number is its position in the expanded list of seats (`count`
+repeats an item).  The seats on a side are spread evenly and centred on the
+side's free part, clockwise; `arms[].shift` moves a side's group along it.
+`seats[].align` lines seats up with other seats: one element per seat of
+the item, the number of another seat or null; such a seat takes that
+seat's coordinate along its own side (x on the top and bottom, y on the
+left and right), and the other seats on its side are laid out around it
+(see `_place`).  The couple (their seats, label and arm) is a separate part
+of the menu data and comes in as parameters.
 
-Every coordinate is computed in whole half pixels (ints) and every number of
+Every coordinate is computed in whole half pixels (ints) and every number in
 the output is a string ("66", "66.5"), so the result does not depend on the
 platform or the Python version.  Standard library only, no input or output;
-the markup is the business of the template fragment.
+the markup belongs to the template fragment.
 
 Public functions: `check_table`, `check_couple`, `expand_seats`,
 `badge_capacity`, `guest_scheme`, `staff_scheme`.
@@ -37,13 +37,13 @@ from typing import Any, NamedTuple
 # Constants (px, the user units of the viewBox)
 # --------------------------------------------------------------------------
 
-#: The field of the plan when the table gives no size of its own.
+#: The plan's field when the table gives no size of its own.
 FIELD_WIDTH = 318
 FIELD_HEIGHT = 310
 #: The limits of `table.width` and `table.height`.  The drawing is scaled
 #: down to the width of its card, type and all: on the narrowest phone (320
 #: px) the card gives it about 280 px, so a field of 480 is drawn at about
-#: 0.6 of its size and the 12 px type of the plan at about 7 px, still
+#: 0.6 of its size and the plan's 12 px type at about 7 px, which is
 #: legible; a wider field would make it smaller.  The height does not change
 #: the scale: up to 640, two default fields, the plan stays within a screen
 #: or two.  The lower limits are about three quarters and half of the
@@ -61,14 +61,14 @@ SEAT_PITCH = 42
 #: The tightest pitch on a side: a seat and a gap of 4 px.
 SEAT_PITCH_MIN = 34
 SEAT_DIAMETER = 30
-#: The circle of a seat of the guest.
+#: The circle of a guest's seat.
 YOU_DIAMETER = 34
-#: The ring around a seat of the guest.
+#: The ring around a guest's seat.
 RING_WIDTH = 4
 RING_RADIUS = YOU_DIAMETER // 2 + RING_WIDTH
-#: The least gap between the circle of a guest seat and any arm.
+#: The smallest gap between a guest seat's circle and any arm.
 ARM_GAP = 2
-#: The radius of the convex corners of the outline.
+#: The radius of the outline's convex corners.
 ARM_RADIUS = 10
 MIN_ARM_SIZE = 2 * ARM_RADIUS
 
@@ -85,13 +85,13 @@ LABEL_HEIGHT = 14
 #: How far a label keeps from the centre of another seat.
 SEAT_KEEP_OUT = SEAT_DIAMETER // 2 + 2
 
-#: The colours of the seats of a guest record, in the order of its seats:
-#: the modifier `seat--colour-<n>` of a seat of the guest on the plan (and
-#: of its name under the plan), drawn in the token `--color-seat-<n>`.  A
-#: record has at most this many seats.
+#: The colours of a guest record's seats, in seat order: the modifier
+#: `seat--colour-<n>` of a guest's seat on the plan (and of its name under
+#: the plan), drawn in the token `--color-seat-<n>`.  A record has at most
+#: this many seats.
 SEAT_COLOURS = ("1", "2", "3")
 
-#: Estimated width of a capital of the couple label, half px (7.5 px at
+#: Estimated width of a capital letter in the couple label, half px (7.5 px at
 #: 11 px with 0.06em tracking): there is no text measuring at build time.
 COUPLE_CHAR_HALVES = 15
 #: The couple label keeps this far from the ends of the free part of its arm.
@@ -126,8 +126,8 @@ _SEAT_FIELDS = ("align", "arm", "count", "side")
 _ID_RE = re.compile(r"[a-z][a-z0-9-]{0,39}")
 _ID_RULE = "an id: a-z, 0-9 and '-', starting with a letter, at most 40 characters"
 _OUTWARD = {"top": (0, -1), "right": (1, 0), "bottom": (0, 1), "left": (-1, 0)}
-# Badge spots in the order they are taken: top right (as in the mockup), top
-# left, bottom right, bottom left.
+# Badge spots in the order they are taken: top right, top left, bottom
+# right, bottom left.
 _BADGE_SPOTS = (
     (BADGE_OFFSET, -BADGE_OFFSET),
     (-BADGE_OFFSET, -BADGE_OFFSET),
@@ -424,8 +424,8 @@ def _parse_seats(raw: Any, ids: dict, errors: list[str]) -> tuple[list, int | No
 
 
 def _parse_align(item: dict, where: str, first: int, count: int | None, errors: list[str]) -> list:
-    """The seats that the seats of an item align to (None: not aligned), one
-    per seat; `count` is None when the count of the item is wrong."""
+    """The seats that an item's seats align to (None: not aligned), one per
+    seat; `count` is None when the item's count is wrong."""
     targets: list[int | None] = [None] * (count or 1)
     if "align" not in item:
         return targets
@@ -484,7 +484,7 @@ def _side_span(arm: _Arm, side: str) -> tuple[int, int]:
 
 
 def _centre_line(arm: _Arm, side: str) -> int:
-    """The other coordinate of the seat centres of a side, px."""
+    """The other coordinate of a side's seat centres, px."""
     if side == "top":
         return arm.y0 - SEAT_CLEARANCE
     if side == "right":
@@ -538,7 +538,7 @@ def _free_parts(arm: _Arm, side: str, arms: Sequence[_Arm]) -> list[tuple[int, i
 
 
 def _groups(specs: Sequence[tuple]) -> dict:
-    """(arm id, side) -> seat numbers, in the order of the first seat."""
+    """(arm id, side) -> seat numbers, ordered by their first seat."""
     groups: dict[tuple[str, str], list[int]] = {}
     for number, (arm_id, side, _item) in enumerate(specs, 1):
         groups.setdefault((arm_id, side), []).append(number)
@@ -560,8 +560,8 @@ def _clockwise(side: str) -> int:
 
 def _align_links(specs: Sequence[tuple], targets: Sequence) -> dict:
     """Seat -> the seats its place depends on: an aligned seat depends on the
-    seat it aligns to, another seat of a side with aligned seats on the
-    aligned seats next to it on the side (one or two)."""
+    seat it aligns to; any other seat on a side with aligned seats depends on
+    the aligned seats next to it on that side (one or two)."""
     links: dict[int, list[int]] = {}
     for numbers in _groups(specs).values():
         anchors = [k for k, number in enumerate(numbers) if targets[number - 1] is not None]
@@ -624,16 +624,16 @@ def _check_circles(specs: Sequence[tuple], targets: Sequence) -> list[str]:
 def _place(specs: Sequence[tuple], arms: Sequence[_Arm], targets: Sequence) -> list[_Seat]:
     """The seat centres.
 
-    The seats of a side without aligned seats are spread evenly and centred
-    on its free part, at the pitch of 42 px or squeezed so that the outer
-    seats keep 15 px (a seat radius) from its ends, and moved by the shift of
-    the side.  On a side with aligned seats each of them takes the coordinate
-    of the seat it aligns to along the side; the seats between two aligned
-    seats are spread evenly between them; those before the first and after
-    the last one follow it at the pitch of 42 px outwards or, when they would
-    come closer than 15 px to the end of the free part, are spread evenly
-    between that point and the aligned seat.  The shift of such a side has no
-    effect.  The circles of alignments are checked before.
+    The seats on a side without aligned seats are spread evenly and centred
+    on its free part, at a pitch of 42 px or squeezed so that the outer seats
+    keep 15 px (a seat radius) from its ends, and moved by the side's shift.
+    On a side with aligned seats, each aligned seat takes the coordinate of
+    the seat it aligns to along the side; the seats between two aligned seats
+    are spread evenly between them; those before the first and after the
+    last one follow it outwards at a pitch of 42 px or, when they would come
+    closer than 15 px to the end of the free part, are spread evenly between
+    that point and the aligned seat.  Such a side's shift has no effect.
+    Alignment circles are checked beforehand.
     """
     by_id = {arm.id: arm for arm in arms}
     along: dict[int, int] = {}  # seat -> its centre along its side, half px
@@ -836,15 +836,15 @@ def check_table(table: Any) -> TableCheck:
     """Check a table description (parsed JSON of any type).
 
     The messages name positions in `table` and seat numbers, never ids,
-    labels or other values of the data; they carry no file prefix.  `total`
-    is the number of seats when the list of seats could be read, else None.
+    labels or other data values; they carry no file prefix.  `total` is the
+    number of seats when the seat list could be read, else None.
     """
     check, _plan = _check(table)
     return check
 
 
 def _check(table: Any) -> tuple[TableCheck, _Plan | None]:
-    """The rules in waves: structure, circles of alignments, arms, sides,
+    """The rules in waves: structure, alignment circles, arms, sides,
     aligned seats, seats, labels; a wave runs only when the ones before it
     found no error."""
     errors: list[str] = []
@@ -869,9 +869,9 @@ def _check(table: Any) -> tuple[TableCheck, _Plan | None]:
         return TableCheck(errors, warnings, total), None
 
     plan = _Plan(parsed.label, parsed.field, arms, parsed.ids, seats, _outline(arms))
-    # Any seat can be the one seat of a guest, so every seat needs room for
-    # "You".  With the constants above the label of a seat always fits onto
-    # its own arm; the check guards the layout against a change of the
+    # Any seat can be a guest's only seat, so every seat needs room for
+    # "You".  With the constants above a seat's label always fits onto its
+    # own arm; the check guards the layout against changes to the
     # constants.
     for seat in seats:
         if _label_spot(seat, plan) is None:
@@ -1016,11 +1016,11 @@ def check_couple(
     table: Any, seats: Sequence[int], label: str | None, arm: str | None
 ) -> TableCheck:
     """Check the couple against a table: their seats (from `couple.members`),
-    the label (None: no label) and the arm of the label (None: the arm of the
-    first seat).  The table itself is checked by `check_table`: when it has
-    errors, only what does not depend on it is checked here.  The couple is
-    drawn on the staff plan alone, where no seat has a "You" label: the
-    couple label may lie anywhere on its arm.
+    the label (None: no label) and the label's arm (None: the first seat's
+    arm).  `check_table` checks the table itself: when it has errors, only
+    what does not depend on it is checked here.  The couple is drawn on the
+    staff plan alone, where no seat has a "You" label, so the couple label
+    may lie anywhere on its arm.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -1168,14 +1168,13 @@ def badge_capacity(table: Any, number: int) -> int:
 def guest_scheme(table: Any, *, own_seats: Sequence[int], mine_text: str) -> dict:
     """The `scheme` object of a guest page.
 
-    `own_seats` are the seats of the guest record, the guest's own first;
-    each of them is drawn in a colour of its own, by its place in the record
-    (`SEAT_COLOURS`).  Only the one seat of a record of one seat gets the
-    "You" label (`check_table` makes sure that it fits at any seat); the
-    seats of a larger record are told apart by their colours alone.  Every
-    other seat is a plain one: the guest plan has no couple, no couple
-    label, no badges and no dietary marks.  `mine_text` ("Olga — blue") is
-    worded by the caller.
+    `own_seats` are the guest record's seats, the guest's own first; each is
+    drawn in a colour of its own, by its place in the record
+    (`SEAT_COLOURS`).  Only the seat of a single-seat record gets the "You"
+    label (`check_table` makes sure that it fits at any seat); the seats of
+    a larger record are told apart by colour alone.  Every other seat is
+    plain: a guest's plan has no couple, no couple label, no badges and no
+    dietary marks.  The caller words `mine_text` ("Olga — blue").
 
     Raises TableError when the table does not pass `check_table` or the
     parameters contradict it, more seats than colours among them.
@@ -1211,10 +1210,10 @@ def staff_scheme(
 ) -> dict:
     """The `scheme` object of the staff page.
 
-    `letters` maps a seat number to the letters of its dietary notes in the
-    order of the legend; such a seat is marked and gets a badge per letter.
-    The seats of the couple and the couple label are drawn; there are no
-    seats of a guest, no colours of them and no "You" label.
+    `letters` maps a seat number to the letters of its dietary notes in
+    legend order; such a seat is marked and gets a badge per letter.  The
+    couple's seats and the couple label are drawn; there are no guest seats,
+    no seat colours and no "You" label.
     """
     plan = _checked(table)
     total = len(plan.seats)
@@ -1267,8 +1266,8 @@ def _couple_input(
 
 
 def _seat_entries(plan: _Plan, *, own: Sequence[int], couple: set, flagged: set) -> list[dict]:
-    """The seats of a plan; `own` are the seats of a guest in the order of
-    the record: each takes the colour of its place."""
+    """A plan's seats; `own` are a guest's seats in record order: each takes
+    the colour of its place."""
     colours = dict(zip(own, SEAT_COLOURS))
     entries = []
     for seat in plan.seats:
