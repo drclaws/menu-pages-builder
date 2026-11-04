@@ -72,12 +72,20 @@ class ExampleDataTest(unittest.TestCase):
                 for person in people - {None}:
                     self.assertFalse(support.occurs(person, shared), person)
 
-    def test_the_main_set_shows_every_part_of_the_format(self):
+    def test_the_main_set_shows_the_main_parts_of_the_format(self):
         menu, guests = load(EXAMPLES / "data")
-        widget_types = {widget["type"] for section in menu["sections"] for widget in section.get("widgets", [])}
-        self.assertEqual(widget_types, set(_schema.WIDGET_TYPES))
+        widgets = [widget for section in menu["sections"] for widget in section.get("widgets", [])]
+        self.assertEqual({widget["type"] for widget in widgets}, set(_schema.WIDGET_TYPES))
+        variants = {widget.get("variant", "body") for widget in widgets if widget["type"] == "text"}
+        self.assertEqual(variants, set(_schema.TEXT_VARIANTS))
         self.assertEqual(len(menu["reservedSeats"]), 1)
+        # a short tag for the seat table instead of the label
+        self.assertEqual([key for key, item in menu["requirements"].items() if "tag" in item], ["nuts"])
+        self.assertEqual({member["role"] for member in menu["couple"]["members"]}, {"host"})
         sections = {section["id"]: section for section in menu["sections"]}
+        # a section hidden by default, switched on for one record
+        self.assertEqual(sections["toasts"]["visible"], False)
+        self.assertEqual([record["name"] for record in guests if "toasts" in record.get("sections", {})], ["Frida"])
         self.assertEqual([tuple(item.get("audience", "all") for item in sections[name]["widgets"])
                           for name in ("food", "drinks")],
                          [("all", "all", "staff", "all", "all", "guest"), ("guest", "staff")])
@@ -87,7 +95,7 @@ class ExampleDataTest(unittest.TestCase):
         self.assertEqual([item["type"] for item in sections["info"]["widgets"]],
                          ["heading", "text", "heading", "text"])
         self.assertEqual([section["id"] for section in menu["sections"]],
-                         ["cover", "seats", "food", "drinks", "info", "signature"])
+                         ["cover", "seats", "food", "drinks", "info", "toasts", "signature"])
         records = [record for record in guests if record.get("staff") is not True]
         seats = [record["seats"] for record in records]
         total = sum(1 for arm in menu["table"]["seats"] for _ in range(arm.get("count", 1)))
@@ -97,7 +105,7 @@ class ExampleDataTest(unittest.TestCase):
         self.assertTrue(any(len(item) == 2 and "plusOne" not in item[1] for item in seats))
         self.assertTrue(any(item[-1] == {"number": item[-1]["number"], "plusOne": True} for item in seats))
         self.assertTrue(any(len(seat.get("requirements", [])) == 2 for item in seats for seat in item))
-        self.assertEqual(sum(1 for record in records if "sections" in record), 2)
+        self.assertEqual(sum(1 for record in records if "sections" in record), 3)
 
 
 class ExamplePagesTest(unittest.TestCase):
@@ -155,16 +163,18 @@ class ExamplePagesTest(unittest.TestCase):
 
     def test_the_line_of_the_sections(self):
         # (a guest page, the staff page): the plain set's seats are for the
-        # staff alone
-        expected = {"data": (["Seats", "Food", "Drinks", "Info"], ["Seats", "Food", "Drinks", "Info"]),
+        # staff alone; the toasts are on the pages they are switched on for
+        expected = {"data": (["Seats", "Food", "Drinks", "Info"], ["Seats", "Food", "Drinks", "Info", "Toasts"]),
                     "data-plain": (["Starters", "Mains", "Drinks"], ["Seats", "Starters", "Mains", "Drinks"])}
-        for name, (_out, _menu, _guests, pages, staff) in self.built.items():
+        for name, (_out, _menu, guests, pages, staff) in self.built.items():
+            toasts = {record["token"] for record in guests if "toasts" in record.get("sections", {})}
             for token, page in pages.items():
                 with self.subTest(set=name, page=token):
                     self.assertEqual(page.count("<nav "), 1)
                     line = re.search(r'<nav class="section-nav" aria-label="Sections" data-section-nav>.*?</nav>',
                                      page, re.S).group(0)
-                    self.assertEqual(re.findall(r">([^<]+)</a>", line), expected[name][token == staff])
+                    links = expected[name][token == staff] + (["Toasts"] if token in toasts else [])
+                    self.assertEqual(re.findall(r">([^<]+)</a>", line), links)
                     # before the sections, the first element of a guest page
                     self.assertLess(page.index(line), page.index('<main class="page">'))
                     if token != staff:
@@ -254,7 +264,7 @@ class ExamplePagesTest(unittest.TestCase):
         # one: "+1", whose guest it is and a placeholder
         expected = {
             "data": {1: "1 Hugo · Greta’s guest", 9: "9 +1 · Heidi’s guest, [name]", 16: "16 Oscar · Trent’s guest",
-                     2: "2 Peggy"},
+                     2: "2 Peggy", 6: "6 Maren · host", 4: "4 Rupert nut allergy"},
             "data-plain": {3: "3 +1 · Astrid’s guest, [name]", 2: "2 Astrid"},
         }
         for name, (_out, _menu, _guests, pages, staff) in self.built.items():
@@ -280,6 +290,42 @@ class ExamplePagesTest(unittest.TestCase):
                         self.assertEqual('role="img"' in page, token != staff)
         self.assertIn("table", self.built["data"][1])
         self.assertNotIn("table", self.built["data-plain"][1])
+
+    def test_the_toasts_are_on_the_page_they_are_switched_on_for_and_the_staff_page(self):
+        _out, menu, guests, pages, staff = self.built["data"]
+        texts = [widget["text"] for section in menu["sections"] if section["id"] == "toasts"
+                 for widget in section["widgets"]]
+        frida = next(record["token"] for record in guests if record.get("name") == "Frida")
+        for token, page in pages.items():
+            with self.subTest(page=token):
+                shown = token in (frida, staff)
+                self.assertEqual('id="s-toasts"' in page, shown)
+                self.assertEqual("text-widget--lead" in page, shown)
+                for text in texts:
+                    self.assertEqual(text in page, shown)
+                # the staff page says whose pages show it
+                self.assertEqual("Shown only to the guests giving a toast" in page, token == staff)
+
+    def test_the_staff_seating_has_the_legend_and_the_tag_in_the_seat_table(self):
+        _out, _menu, _guests, pages, staff = self.built["data"]
+        for token, page in pages.items():
+            with self.subTest(page=token):
+                self.assertEqual('<ul class="legend"' in page, token == staff)
+                # the legend keeps the label, the seat table shows the tag
+                self.assertEqual('<span class="legend__label">no nuts</span>' in page, token == staff)
+                self.assertEqual('<li class="pill pill--flag">nut allergy</li>' in page, token == staff)
+                self.assertNotIn('<li class="pill pill--flag">no nuts</li>', page)
+                # the plan's badges stay
+                self.assertEqual('class="seat-badge"' in page, token == staff)
+
+    def test_an_inline_group_of_drinks_is_one_line_of_names(self):
+        lines = {"data": "Still and sparkling water · Lemonade and apple juice",
+                 "data-plain": "Still and sparkling water · Homemade lemonade"}
+        for name, (_out, _menu, guests, pages, staff) in self.built.items():
+            guest = next(record["token"] for record in guests if record.get("staff") is not True)
+            with self.subTest(set=name):
+                self.assertIn(f'<p class="drinks__joined">{lines[name]}</p>', pages[guest])
+                self.assertNotIn("drinks__joined", pages[staff])
 
     def test_the_staff_bar_is_on_the_staff_page_alone(self):
         for name, (_out, _menu, _guests, pages, staff) in self.built.items():

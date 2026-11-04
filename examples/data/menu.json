@@ -15,6 +15,7 @@
     "nuts": {
       "letter": "N",
       "label": "no nuts",
+      "tag": "nut allergy",
       "avoids": [
         "nuts"
       ]
@@ -458,6 +459,26 @@
         {
           "type": "text",
           "text": "An instant camera waits at the bar: take a picture and leave it for the couple."
+        }
+      ]
+    },
+    {
+      "id": "toasts",
+      "title": "Toasts",
+      "nav": "Toasts",
+      "visible": false,
+      "staff": {
+        "eyebrow": "Shown only to the guests giving a toast"
+      },
+      "widgets": [
+        {
+          "type": "text",
+          "variant": "lead",
+          "text": "Thank you for raising a glass to us tonight!"
+        },
+        {
+          "type": "text",
+          "text": "The toasts begin after the main course. The microphone waits at the bar; two or three minutes each is just right."
         }
       ]
     },
