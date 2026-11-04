@@ -362,11 +362,6 @@ def joined(parts: Iterable[str]) -> str:
     return DOT.join(part for part in parts if part)
 
 
-def listed(parts: Iterable[str]) -> str:
-    """The parts as one line: "Water, lemonade, juice"."""
-    return LIST_SEPARATOR.join(parts)
-
-
 def dish_swap_line(words: Words, numbers: Sequence[int], text: str) -> str:
     """"Seat 3 — serve the nut-free version", "Seats 10 & 14 — ..."."""
     return f"{seat_label(words, numbers)}{DASH}{text}"
@@ -418,7 +413,6 @@ __all__ = [
     "host_line",
     "pairing_text",
     "joined",
-    "listed",
     "dish_swap_line",
     "set_swap_line",
     "drink_reminder",

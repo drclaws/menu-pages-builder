@@ -351,7 +351,8 @@ class GuestPageTest(unittest.TestCase):
         soft, wines = drinks["groups"]
         self.assertEqual(
             soft,
-            {"title": "Soft drinks", "layout": "inline", "joined": "Still and sparkling water, Lemonade and apple juice", "items": []},
+            {"title": "Soft drinks", "layout": "inline", "joined": f"Still and sparkling water{DOT}Lemonade and apple juice",
+             "items": []},
         )
         self.assertEqual((wines["title"], wines["layout"], wines["joined"]), ("Wines", "list", ""))
         self.assertEqual(
@@ -776,7 +777,7 @@ class ContractTest(unittest.TestCase):
         (guest,) = widgets(trees.guests[0].tree, "drinks")
         self.assertEqual(
             guest["groups"],
-            [{"title": "", "layout": "inline", "joined": "Still and sparkling water, Homemade lemonade", "items": []}],
+            [{"title": "", "layout": "inline", "joined": f"Still and sparkling water{DOT}Homemade lemonade", "items": []}],
         )
         self.assertEqual(guest["note"], "")
         (staff,) = widgets(trees.staff.tree, "drinks")

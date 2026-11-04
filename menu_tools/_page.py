@@ -458,7 +458,7 @@ class _GuestPage:
                 groups.append({
                     "title": group["title"],
                     "layout": group["layout"],
-                    "joined": _words.listed(drink["name"] for drink in drinks) if inline else "",
+                    "joined": _words.joined(drink["name"] for drink in drinks) if inline else "",
                     "items": [] if inline else [
                         {
                             "category": public["categories"][drink["category"]]["label"],
