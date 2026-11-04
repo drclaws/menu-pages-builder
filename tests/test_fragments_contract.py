@@ -820,7 +820,7 @@ class WidgetTests(unittest.TestCase):
     def test_the_cover_of_a_guest(self):
         cover = self.section("guest-plus-one", "cover")
         self.assertIn('<p class="section__subtitle cover__eyebrow">Ivan &amp; Vera</p>', cover)
-        self.assertIn('<h1 class="cover__title" id="s-cover--title">Wedding dinner</h1>', cover)
+        self.assertIn('<h1 class="cover__title" id="s-cover--title">Anniversary dinner</h1>', cover)
         self.assertIn('<hr class="divider divider--accent cover__divider">', cover)
         self.assertIn('<p class="cover__when">15 June 2030, 19:00</p>', cover)
         self.assertIn('<p class="cover__place">Riverside Bistro · Example Street 5</p>', cover)
@@ -829,7 +829,7 @@ class WidgetTests(unittest.TestCase):
     def test_the_header_of_the_staff_page(self):
         cover = self.section("staff", "cover")
         self.assertIn('<section class="cover cover--staff" id="s-cover"', cover)
-        self.assertIn(">Ivan &amp; Vera · Wedding dinner</p>", cover)
+        self.assertIn(">Ivan &amp; Vera · Anniversary dinner</p>", cover)
         self.assertIn('<h1 class="cover__title" id="s-cover--title">15 June 2030, 19:00</h1>',
                       cover)
         self.assertEqual(re.findall(r'<li class="(pill[^"]*)">([^<]*)</li>', cover),

@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "coupleNames": "Linus & Maren",
   "event": {
-    "title": "Wedding dinner",
+    "title": "Anniversary dinner",
     "when": "15 June 2030, 19:00",
     "place": "Riverside Bistro · Example Street 5"
   },
   "staff": {
     "updated": "12 June 2030",
-    "contact": "Selma (wedding planner) · +00 000 000 00 00",
+    "contact": "Selma (event planner) · +00 000 000 00 00",
     "reminder": "Staff link only — please do not show this page to guests."
   },
   "requirements": {

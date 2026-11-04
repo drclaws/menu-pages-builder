@@ -158,7 +158,7 @@ def nodes(tree: dict, kind: str = "root") -> Iterator[tuple[str, dict]]:
 # --- the page and its parts --------------------------------------------------
 
 COUPLE = "Ivan & Vera"
-EVENT = {"title": "Wedding dinner", "when": "15 June 2030, 19:00",
+EVENT = {"title": "Anniversary dinner", "when": "15 June 2030, 19:00",
          "place": "Riverside Bistro · Example Street 5"}
 ASSETS = "/assets"
 

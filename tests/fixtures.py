@@ -31,7 +31,7 @@ from pathlib import Path
 
 COUPLE_NAMES = "Ivan & Vera"
 EVENT = {
-    "title": "Wedding dinner",
+    "title": "Anniversary dinner",
     "when": "15 June 2030, 19:00",
     "place": "Riverside Bistro · Example Street 5",
 }
@@ -53,7 +53,7 @@ ALLERGENS = {
 #: The texts of the staff, the same in every set.
 STAFF = {
     "updated": "12 June 2030",
-    "contact": "Selma (wedding planner) · +00 000 000 00 00",
+    "contact": "Selma (event planner) · +00 000 000 00 00",
     "reminder": "Staff link only — please do not show this page to guests.",
 }
 
@@ -566,7 +566,7 @@ _PLAIN_MENU = {
     "schemaVersion": 1,
     "coupleNames": COUPLE_NAMES,
     "event": EVENT,
-    "staff": {"updated": "1 June 2030", "contact": "Selma (wedding planner), phone on the event sheet"},
+    "staff": {"updated": "1 June 2030", "contact": "Selma (event planner), phone on the event sheet"},
     "dishes": {
         "bread": {"name": "Bread and butter", "ingredients": "Sourdough, salted butter"},
         "salad": {"name": "Garden salad", "ingredients": "Leaves, radish, mustard dressing"},
