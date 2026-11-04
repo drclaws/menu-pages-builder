@@ -447,7 +447,7 @@ class StructureTest(unittest.TestCase):
                     self.assertEqual(item["note"], "")
                     for widget in item["widgets"]:
                         if widget["type"] == "seating":
-                            self.assertEqual((widget["mySeats"], widget["names"]), ([], []))
+                            self.assertEqual(widget["names"], [])
                             if widget["scheme"] is not None:
                                 self.assertEqual(widget["scheme"]["labels"], [])
                                 self.assertNotIn("you", {seat["kind"] for seat in widget["scheme"]["seats"]})

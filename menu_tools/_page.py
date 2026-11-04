@@ -51,14 +51,6 @@ from typing import Any, NamedTuple
 from menu_tools import _table, _words
 from menu_tools._schema import EVENT_FIELDS, MENU_FILE, guest_where
 
-#: The marks of `mySeats` are given only up to this many seats of a record.
-MAX_MARKED_SEATS = 2
-#: `mySeats[].mark`: the guest's own seat, the seat of a companion, no mark.
-MARK_YOU = "you"
-MARK_PLUS_ONE = "plusOne"
-MARK_NONE = "none"
-MARKS = (MARK_YOU, MARK_PLUS_ONE, MARK_NONE)
-
 DEFAULT_VARIANT = "body"
 DEFAULT_LAYOUT = "list"
 INLINE_LAYOUT = "inline"
@@ -215,7 +207,6 @@ def _seating(base: dict) -> dict:
     return {
         **base,
         "scheme": None,
-        "mySeats": [],
         "names": [],
         "legend": [],
         "rows": [],
@@ -438,7 +429,7 @@ class _GuestPage:
                 courses = [_dish(public["dishes"][dish_id]) for dish_id in entry["courses"]]
                 items.append(_set(set_id, entry, dom_id, courses, [], heading is not None))
             return {**base, "labelledBy": heading or labelled_by, "items": items, "note": widget["note"],
-                    "count": len(items), "multiple": len(items) > 1}
+                    "multiple": len(items) > 1}
         if kind == "drinks":
             groups = []
             for group in widget["groups"]:
@@ -467,18 +458,7 @@ class _GuestPage:
         seats = self.own["seats"]
         numbers = [seat["number"] for seat in seats]
         names = _words.seat_names(self.own["name"], [seat["name"] for seat in seats])
-        marked = len(seats) <= MAX_MARKED_SEATS
-
-        def mark(position: int, seat: dict) -> str:
-            if not marked:
-                return MARK_NONE
-            if position == 0:
-                return MARK_YOU
-            return MARK_PLUS_ONE if seat["plusOne"] else MARK_NONE
-
-        mine = [{"number": seat["number"], "mark": mark(position, seat)} for position, seat in enumerate(seats)]
         tree = _seating(base)
-        tree["mySeats"] = sorted(mine, key=lambda item: item["number"])
         # checked data: a record has no more seats than there are colours
         tree["names"] = [
             {"name": name, "colour": _table.SEAT_COLOURS[position]} for position, name in enumerate(names)
@@ -649,7 +629,7 @@ class _StaffPage:
                 self.usage.staff_dishes.update(entry["courses"])
             note = _text(staff.get("note"))
             return {**base, "labelledBy": heading or labelled_by, "items": items, "note": note,
-                    "count": len(items), "multiple": len(items) > 1}
+                    "multiple": len(items) > 1}
         if kind == "drinks":
             listed = []
             drinks = menu["drinks"]
@@ -791,7 +771,6 @@ def build_trees(menu: dict, guests: list, report: Any, settings: Settings = DEFA
 
 
 __all__ = [
-    "MARKS",
     "Settings",
     "DEFAULT_SETTINGS",
     "Page",

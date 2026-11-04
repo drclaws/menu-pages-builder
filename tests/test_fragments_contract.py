@@ -47,10 +47,6 @@ SCHEME_KINDS = ("scheme", "schemeCouple", "schemeSeat", "schemeBadge", "schemeLa
 UNREAD = {
     "section.id": "the id of the data; the page names a section by its domId",
     "set.id": "the id of the data; the page names a set by its domId",
-    "sets.count": "the script counts the tabs itself; multiple tells whether there are tabs",
-    "seating.mySeats": "the page shows the own seats on the scheme and by the names under it",
-    "mySeat.number": "a field of mySeats",
-    "mySeat.mark": "a field of mySeats",
 }
 
 #: The fields that only the staff page fills: a guest's page has them empty
@@ -69,7 +65,6 @@ STAFF_ONLY = frozenset({
 #: The fields that only a guest's page fills: the staff page has them empty
 #: (or has no such widget) and never reads them.
 GUEST_ONLY = frozenset({
-    "seating.mySeats", *(f"mySeat.{field}" for field in T.NODES["mySeat"]),
     "seating.names", *(f"seatName.{field}" for field in T.NODES["seatName"]),
     "scheme.labels", "scheme.mine", "scheme.single", "schemeSeat.colour",
     *(f"schemeLabel.{field}" for field in T.NODES["schemeLabel"]),
@@ -292,11 +287,6 @@ class TreeTests(unittest.TestCase):
     def test_the_trees_cover_the_cases(self):
         trees = T.all_trees()
         plus_one = widgets_of(trees["guest-plus-one"], "seating")[0]
-        self.assertEqual([(seat["number"], seat["mark"]) for seat in plus_one["mySeats"]],
-                         [(8, "you"), (9, "plusOne")])
-        marks = {seat["mark"] for tree in trees.values() for widget in widgets_of(tree, "seating")
-                 for seat in widget["mySeats"]}
-        self.assertEqual(marks, set(T.MY_SEAT_MARKS))
         # the plan of the guest: the own seats in two colours, no couple, no label
         plan = plus_one["scheme"]
         self.assertIsNone(plan["couple"])
@@ -1032,7 +1022,7 @@ class WidgetTests(unittest.TestCase):
         main["widgets"] = [T.heading("main", 1, "Main course", "Two sets · guests choose at the table"),
                            T.widget("sets", "main", 2, labelled_by="s-main--w1--title",
                                     items=T.sets("s-main--w2", T.SETS, True, nested=True),
-                                    note="", count=2, multiple=True)]
+                                    note="", multiple=True)]
         page = render_strict(tree, self.template)
         self.assertEqual(html_problems(page), [])
         staff = element(page, "sets-widget")
@@ -1246,12 +1236,12 @@ class DataLayerPageTests(unittest.TestCase):
                     found.append((label, tree, plan, element(document, "scheme")))
         return found
 
-    def guest_plan(self, name: str, seats: list[tuple[int, str]]) -> tuple[dict, str]:
-        """The plan and the drawing of the guest whose own seats are `seats`."""
+    def guest_plan(self, name: str, seats: list[int]) -> tuple[dict, str]:
+        """The plan and the drawing of the guest whose own seats are `seats`
+        (in ascending order)."""
         found = [(plan, drawing) for label, tree, plan, drawing in self.plan_pages(name)
                  if not tree["isStaff"]
-                 and [(seat["number"], seat["mark"])
-                      for seat in widgets_of(tree, "seating")[0]["mySeats"]] == seats]
+                 and [int(seat["number"]) for seat in plan["seats"] if seat["kind"] == "you"] == seats]
         self.assertEqual(len(found), 1, seats)
         return found[0]
 
@@ -1289,7 +1279,7 @@ class DataLayerPageTests(unittest.TestCase):
 
     def test_a_guest_with_a_companion_at_the_other_end_of_the_table(self):
         # the guest at seat 19 in the first colour, the +1 at seat 1 in the second
-        plan, drawing = self.guest_plan("reserved19", [(1, "plusOne"), (19, "you")])
+        plan, drawing = self.guest_plan("reserved19", [1, 19])
         self.assertEqual(self.own_colours(plan, drawing), {"19": "1", "1": "2"})
         self.assertNotIn("seat-label", drawing)
         self.assertNotIn("seat__number", drawing)
@@ -1297,14 +1287,14 @@ class DataLayerPageTests(unittest.TestCase):
                       'Greta — blue, Hugo — dark red"', drawing)
 
     def test_a_record_for_two_has_two_own_seats_in_two_colours_and_no_label(self):
-        plan, drawing = self.guest_plan("reserved19", [(2, "you"), (3, "none")])
+        plan, drawing = self.guest_plan("reserved19", [2, 3])
         self.assertEqual(self.own_colours(plan, drawing), {"2": "1", "3": "2"})
         self.assertEqual(drawing.count('class="seat__ring"'), 2)
         self.assertNotIn("seat-label", drawing)
         self.assertIn("Your seats: Peggy — blue, Victor — dark red", drawing)
 
     def test_a_guest_of_one_seat_has_the_label_you(self):
-        plan, drawing = self.guest_plan("reserved19", [(4, "you")])
+        plan, drawing = self.guest_plan("reserved19", [4])
         self.assertEqual(self.own_colours(plan, drawing), {"4": "1"})
         [(x, y, text)] = re.findall(r'<text class="seat-label[^"]*" x="([\d.-]+)" '
                                     r'y="([\d.-]+)">([^<]*)</text>', drawing)

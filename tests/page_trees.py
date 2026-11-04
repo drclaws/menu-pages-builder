@@ -62,13 +62,11 @@ NODES = {
     "counters": ("guests", "notes", "guestsText", "notesText", "tableLabel"),
     "section": ("id", "type", "domId", "titleId", "title", "eyebrow", "note", "widgets"),
     "widget:text": WIDGET_COMMON_FIELDS + ("text", "variant"),
-    "widget:seating": WIDGET_COMMON_FIELDS + ("scheme", "mySeats", "names", "legend", "rows",
-                                              "footnote"),
+    "widget:seating": WIDGET_COMMON_FIELDS + ("scheme", "names", "legend", "rows", "footnote"),
     "widget:dishes": WIDGET_COMMON_FIELDS + ("title", "items"),
-    "widget:sets": WIDGET_COMMON_FIELDS + ("items", "note", "count", "multiple"),
+    "widget:sets": WIDGET_COMMON_FIELDS + ("items", "note", "multiple"),
     "widget:drinks": WIDGET_COMMON_FIELDS + ("groups", "list", "note"),
     "widget:heading": WIDGET_COMMON_FIELDS + ("titleId", "title", "eyebrow"),
-    "mySeat": ("number", "mark"),
     "seatName": ("name", "colour"),
     "legend": ("letter", "label"),
     "row": ("number", "name", "isPlusOne", "hostName", "roleLabel", "isCouple", "isFree",
@@ -95,7 +93,6 @@ CHILDREN = {
     ("root", "sections"): "section",
     ("section", "widgets"): "widget",
     ("widget:seating", "scheme"): "scheme",
-    ("widget:seating", "mySeats"): "mySeat",
     ("widget:seating", "names"): "seatName",
     ("widget:seating", "legend"): "legend",
     ("widget:seating", "rows"): "row",
@@ -110,9 +107,6 @@ CHILDREN = {
     ("scheme", "badges"): "schemeBadge",
     ("scheme", "labels"): "schemeLabel",
 }
-
-#: The marks of the guest's own seats (`mySeats[].mark`): codes, not words.
-MY_SEAT_MARKS = ("you", "plusOne", "none")
 
 #: Checked enumerations: the only fields a class modifier may come from.
 ENUMS = {
@@ -218,12 +212,11 @@ def dishes(entries: tuple, staff_page: bool) -> list[dict]:
             for name, ingredients, extra in entries]
 
 
-def seating(section_id: str, *, scheme: dict | None = None, my_seats: tuple = (),
-            names: tuple = (), legend: tuple = (), rows: tuple = (), footnote: str = "") -> dict:
+def seating(section_id: str, *, scheme: dict | None = None, names: tuple = (),
+            legend: tuple = (), rows: tuple = (), footnote: str = "") -> dict:
     """The seating widget; `names` are who sits at the seats of the record,
     in their order: each takes the colour of its place."""
     return widget("seating", section_id, 1, scheme=scheme,
-                  mySeats=[node("mySeat", number=number, mark=mark) for number, mark in my_seats],
                   names=[node("seatName", name=name, colour=colour)
                          for name, colour in zip(names, ENUMS["colour"])],
                   legend=[node("legend", letter=letter, label=label) for letter, label in legend],
@@ -409,13 +402,12 @@ def guest_plus_one() -> dict:
         section("seats", "Your seats", widgets=[seating(
             "seats",
             scheme=scheme(staff_page=False, own=(8, 9), mine="Olga — blue, your guest — dark red"),
-            my_seats=((8, "you"), (9, "plusOne")), names=("Olga", "your guest"))]),
+            names=("Olga", "your guest"))]),
         section("starters", "Starters", "Shared plates for the table", widgets=[
             widget("dishes", "starters", 1, title="", items=dishes(STARTERS, False))]),
         section("main", "Main course", "Choose one of two sets", widgets=[
             widget("sets", "main", 1, items=sets("s-main--w1", SETS, False),
-                   note="Your waiter will take your choice after the starters.", count=2,
-                   multiple=True),
+                   note="Your waiter will take your choice after the starters.", multiple=True),
             widget("text", "main", 2, text=ALLERGY_NOTE, variant="card"),
         ]),
         section("drinks", "Drinks", widgets=[guest_drinks("drinks", 1)]),
@@ -430,10 +422,10 @@ def guest_alone() -> dict:
         section("seats", "Your seat", widgets=[seating(
             "seats",
             scheme=scheme(staff_page=False, own=(3,), mine="Boris — blue", label=(98, 10, "middle")),
-            my_seats=((3, "you"),), names=("Boris",))]),
+            names=("Boris",))]),
         section("main", "Main course", widgets=[
             widget("sets", "main", 1, items=sets("s-main--w1", SETS[1:], False), note="",
-                   count=1, multiple=False)]),
+                   multiple=False)]),
         signature(),
     ])
 
@@ -451,13 +443,13 @@ def guest_without_table() -> dict:
                    variant="body"),
         ]),
         section("seats", "Your seat", widgets=[seating(
-            "seats", my_seats=((1, "you"),), names=("Klara",))]),
+            "seats", names=("Klara",))]),
         section("starters", "Starters", widgets=[
             widget("dishes", "starters", 1, title="For the table",
                    items=dishes(PLAIN_STARTERS, False))]),
         section("main", "Main course", "Choose one of three sets", widgets=[
             widget("sets", "main", 1, items=sets("s-main--w1", PLAIN_SETS, False), note="",
-                   count=3, multiple=True)]),
+                   multiple=True)]),
         section("drinks", "Drinks", widgets=[widget("drinks", "drinks", 1, groups=[
             node("group", title="", layout="inline", joined="Water, lemonade, tea and coffee",
                  items=[])], list=[], note="")]),
@@ -469,10 +461,10 @@ def guest_pair() -> dict:
     return root(staff_page=False, sections=[
         cover(),
         section("seats", "Your seats", widgets=[seating(
-            "seats", my_seats=((12, "you"), (13, "none")), names=("Peggy", "Victor"))]),
+            "seats", names=("Peggy", "Victor"))]),
         section("main", "Main course", widgets=[
             widget("sets", "main", 1, items=sets("s-main--w1", SETS[:1], False), note="",
-                   count=1, multiple=False)]),
+                   multiple=False)]),
         signature(),
     ])
 
@@ -493,7 +485,7 @@ def guest_parts() -> dict:
     return root(staff_page=False, nav=nav, sections=[
         cover(),
         section("seats", "Your seats", widgets=[seating(
-            "seats", my_seats=((15, "you"), (16, "plusOne")), names=("Nina", "Oscar"))]),
+            "seats", names=("Nina", "Oscar"))]),
         section("food", "Food", widgets=[
             heading("food", 1, "Starters", "Shared plates for the table"),
             widget("dishes", "food", 2, title="", items=dishes(STARTERS[:3], False)),
@@ -501,8 +493,7 @@ def guest_parts() -> dict:
             heading("food", 4, "Main course", "Choose one of two sets"),
             widget("sets", "food", 5, labelled_by="s-food--w4--title",
                    items=sets("s-food--w5", SETS, False, nested=True),
-                   note="Your waiter will take your choice after the starters.", count=2,
-                   multiple=True),
+                   note="Your waiter will take your choice after the starters.", multiple=True),
             widget("text", "food", 6, text=ALLERGY_NOTE, variant="card"),
         ]),
         section("drinks", "Drinks", widgets=[guest_drinks("drinks", 1)]),
@@ -555,7 +546,7 @@ def staff() -> dict:
             ]),
             section("main", "Main course", "Two sets · guests choose at the table", widgets=[
                 widget("sets", "main", 1, items=sets("s-main--w1", SETS, True),
-                       note="The kitchen needs every order by 20:00.", count=2, multiple=True)]),
+                       note="The kitchen needs every order by 20:00.", multiple=True)]),
             section("drinks", "Drinks", "What to serve and when",
                     widgets=[staff_drinks("drinks", 2)]),
         ],

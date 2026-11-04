@@ -141,7 +141,6 @@ class GuestSeatsTest(unittest.TestCase):
     def test_one_seat(self):
         widget = self.seating_of("Boris")
         self.assertEqual(self.names(widget), [("Boris", "1")])
-        self.assertEqual(widget["mySeats"], [{"number": 4, "mark": "you"}])
         scheme = widget["scheme"]
         self.assertEqual(scheme["mine"], f"Boris{DASH}blue")
         self.assertTrue(scheme["single"])
@@ -153,7 +152,6 @@ class GuestSeatsTest(unittest.TestCase):
     def test_a_plus_one_without_a_name(self):
         widget = self.seating_of("Olga")
         self.assertEqual(self.names(widget), [("Olga", "1"), ("your guest", "2")])
-        self.assertEqual(widget["mySeats"], [{"number": 8, "mark": "you"}, {"number": 9, "mark": "plusOne"}])
         self.assertEqual(widget["scheme"]["mine"], f"Olga{DASH}blue, your guest{DASH}dark red")
         self.assertEqual(self.colours(widget["scheme"]), {"8": "1", "9": "2"})
 
@@ -161,7 +159,7 @@ class GuestSeatsTest(unittest.TestCase):
         # the names under the plan name the companion; the plan has no labels
         widget = self.seating_of("Nina")
         self.assertEqual(self.names(widget), [("Nina", "1"), ("Oscar", "2")])
-        self.assertEqual(widget["mySeats"], [{"number": 15, "mark": "you"}, {"number": 16, "mark": "plusOne"}])
+        self.assertEqual(self.colours(widget["scheme"]), {"15": "1", "16": "2"})
         self.assertEqual(widget["scheme"]["labels"], [])
 
     def test_a_plus_one_across_the_end_of_the_numbers(self):
@@ -169,7 +167,6 @@ class GuestSeatsTest(unittest.TestCase):
         # order of the record, not the numbers
         widget = self.seating_of("Greta")
         self.assertEqual(self.names(widget), [("Greta", "1"), ("Hugo", "2")])
-        self.assertEqual(widget["mySeats"], [{"number": 1, "mark": "plusOne"}, {"number": 19, "mark": "you"}])
         scheme = widget["scheme"]
         self.assertEqual(scheme["mine"], f"Greta{DASH}blue, Hugo{DASH}dark red")
         self.assertFalse(scheme["single"])
@@ -182,7 +179,6 @@ class GuestSeatsTest(unittest.TestCase):
         # the names of the seats, not the name of the record
         widget = self.seating_of("Peggy and Victor")
         self.assertEqual(self.names(widget), [("Peggy", "1"), ("Victor", "2")])
-        self.assertEqual(widget["mySeats"], [{"number": 2, "mark": "you"}, {"number": 3, "mark": "none"}])
         scheme = widget["scheme"]
         self.assertEqual(self.colours(scheme), {"2": "1", "3": "2"})
         self.assertEqual(scheme["labels"], [])
@@ -195,7 +191,6 @@ class GuestSeatsTest(unittest.TestCase):
         trees, _report = build(menu, guests)
         widget = seating(guest_tree(trees, guests, "Olga"))
         self.assertEqual(self.names(widget), [("Olga", "1"), ("your guest", "2"), ("Ada", "3")])
-        self.assertEqual({item["mark"] for item in widget["mySeats"]}, {"none"})
         self.assertEqual(self.colours(widget["scheme"]), {"8": "1", "9": "2", "13": "3"})
         self.assertEqual(widget["scheme"]["labels"], [])
         self.assertEqual(widget["scheme"]["mine"], f"Olga{DASH}blue, your guest{DASH}dark red, Ada{DASH}green")
@@ -312,7 +307,7 @@ class GuestPageTest(unittest.TestCase):
         self.assertEqual([item["name"] for item in dishes["items"]], ["Tomato bruschetta", "Cheese board", "Hummus with vegetables"])
         self.assertEqual(dishes["items"][1]["ingredients"], "Three cheeses, honey, walnuts")
         (sets,) = widgets(tree, "sets")
-        self.assertEqual((sets["count"], sets["multiple"]), (2, True))
+        self.assertEqual((len(sets["items"]), sets["multiple"]), (2, True))
         self.assertEqual(sets["note"], "Your waiter will take your choice after the starters.")
         fish = sets["items"][0]
         self.assertEqual((fish["id"], fish["domId"], fish["title"], fish["hint"]), ("fish", "s-main--w1--set-fish", "Set A", "Fish"))
@@ -599,13 +594,12 @@ SECTION_FIELDS = {"id", "type", "domId", "titleId", "title", "eyebrow", "note", 
 WIDGET_BASE = {"type", "domId", "labelledBy"}
 WIDGET_FIELDS = {
     "text": {"text", "variant"},
-    "seating": {"scheme", "mySeats", "names", "legend", "rows", "footnote"},
+    "seating": {"scheme", "names", "legend", "rows", "footnote"},
     "dishes": {"title", "items"},
-    "sets": {"items", "note", "count", "multiple"},
+    "sets": {"items", "note", "multiple"},
     "drinks": {"groups", "list", "note"},
     "heading": {"titleId", "title", "eyebrow"},
 }
-MY_SEAT_FIELDS = {"number", "mark"}
 NAME_FIELDS = {"name", "colour"}
 LEGEND_FIELDS = {"letter", "label"}
 ROW_FIELDS = {"number", "name", "isPlusOne", "hostName", "roleLabel", "isCouple", "isFree", "tags"}
@@ -656,15 +650,14 @@ class ContractTest(unittest.TestCase):
         if kind == "text":
             self.assertIn(widget["variant"], ("body", "lead", "card", "signature"))
         elif kind == "seating":
+            # a name per seat of a guest, in the colours of the places of the
+            # record; the plan shows the same colours on the guest's seats
+            colours = [item["colour"] for item in widget["names"]]
+            self.assertEqual(colours, list(_table.SEAT_COLOURS[:len(colours)]), where)
             if widget["scheme"] is not None:
                 self.assert_fields(widget["scheme"], SCHEME_FIELDS, where)
-            for item in widget["mySeats"]:
-                self.assert_fields(item, MY_SEAT_FIELDS, where)
-                self.assertIn(item["mark"], _page.MARKS)
-                self.assertIsInstance(item["number"], int)
-            # a name per seat of a guest, in the colours of the places of the record
-            self.assertEqual([item["colour"] for item in widget["names"]],
-                             list(_table.SEAT_COLOURS[:len(widget["mySeats"])]), where)
+                self.assertEqual(sorted(seat["colour"] for seat in widget["scheme"]["seats"] if seat["colour"]),
+                                 colours, where)
             for item in widget["names"]:
                 self.assert_fields(item, NAME_FIELDS, where)
                 self.assert_strings(item, ("name",), where)
@@ -679,7 +672,6 @@ class ContractTest(unittest.TestCase):
             for item in widget["items"]:
                 self.check_dish(item, where)
         elif kind == "sets":
-            self.assertEqual(widget["count"], len(widget["items"]))
             self.assertEqual(widget["multiple"], len(widget["items"]) > 1)
             for item in widget["items"]:
                 self.assert_fields(item, SET_FIELDS, where)
