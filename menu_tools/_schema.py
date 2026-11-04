@@ -1,23 +1,23 @@
 """Checks of the menu data: `menu.json` and `guests.json`.
 
-`check_menu` checks the shared data of the menu and returns a `MenuIndex`,
-what the other checks and the page trees need to know about it;
-`check_guests` checks the personal records against it; `check_data` runs
-both.  Every problem goes to a report object with `error(text)` and
-`warning(text)` (or `warn(text)`); nothing is raised.  `check_usage` turns
-what the finished page trees show into warnings (a dish no page shows).
+`check_menu` checks the shared menu data and returns a `MenuIndex`: what
+the other checks and the page trees need to know about it; `check_guests`
+checks the personal records against it; `check_data` runs both.  Every
+problem goes to a report object with `error(text)` and `warning(text)` (or
+`warn(text)`); nothing is raised.  `check_usage` turns what the finished
+page trees show into warnings (a dish no page shows).
 
 Messages have the form `<file>: field '<path>' <problem>` and
-`guests.json: guest #N: field '<path>' <problem>` (N is the position of the
-record in the file, from 1; the staff record is counted too) and never quote
+`guests.json: guest #N: field '<path>' <problem>` (N is the record's
+position in the file, from 1; the staff record counts too) and never quote
 the data.  In `guests.json` a key is shown only when it is a field name of
-the format or an id declared in `menu.json`; every other key may be a name
+the format or an id declared in `menu.json`; any other key may be a name
 and is shown as `<unknown key>`.  A seat number is shown only when the menu
-has a table that has the seat.
+has a table with that seat.
 
-The table and the couple are checked by `menu_tools._table`; its messages
-name their place in their own way (`table.arms[2]: ...`) and are reported
-as they are, after the name of the file.
+`menu_tools._table` checks the table and the couple; its messages name
+their place in their own way (`table.arms[2]: ...`) and are reported as
+they are, after the file name.
 
 Standard library only; no input/output.
 """
@@ -26,13 +26,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Sequence
+from typing import Any, Sequence
 
 from menu_tools import _table
 from menu_tools._core import (
     ID_RULE,
     SCHEMA_MISSING as MISSING,
     _Checker,
+    _known_list,
     check_token,
     did_you_mean,
     is_identifier,
@@ -77,16 +78,15 @@ DRINK_FIELDS = ("category", "name", "details", "servedWith", "staff")
 DRINK_STAFF_FIELDS = ("bottles", "serving", "swaps")
 
 SECTION_TYPES = ("cover", "custom")
-#: `nav` is the short label of a section in the line of the sections at the
-#: top of a page; a section without one has no link there.
+#: `nav` is a section's short label in the navigation bar at the top of a
+#: page; a section without one has no link there.
 SECTION_FIELDS = {
     "cover": ("id", "type"),
     "custom": ("id", "type", "visible", "audience", "title", "eyebrow", "nav", "staff", "widgets"),
 }
 SECTION_STAFF_FIELDS = ("title", "eyebrow")
-#: `heading` is the head of a part of a section: what follows it, up to the
-#: next heading, is the part (`dishes.title` is a caption of its list, not a
-#: heading).
+#: `heading` heads a part of a section: the part is what follows it, up to
+#: the next heading (`dishes.title` captions its list and is not a heading).
 WIDGET_TYPES = ("text", "seating", "dishes", "sets", "drinks", "heading")
 WIDGET_BASE_FIELDS = ("type", "id", "visible", "audience")
 WIDGET_FIELDS = {
@@ -97,18 +97,18 @@ WIDGET_FIELDS = {
     "drinks": ("groups", "note", "staff"),
     "heading": ("title", "eyebrow", "staff"),
 }
-#: The fields under the `staff` key of a widget: what only the staff page
-#: shows (the texts of a heading replace those of the guests there).
+#: The fields under a widget's `staff` key: what only the staff page shows
+#: (there a heading's staff texts replace the ones the guests see).
 WIDGET_STAFF_FIELDS = {
     "seating": ("footnote",),
     "sets": ("note",),
     "drinks": ("note",),
     "heading": ("title", "eyebrow"),
 }
-#: Nothing of a section stands under such a heading on any page.
+#: No widget stands under such a heading on any page.
 _EMPTY_HEADING = "nothing stands under the heading"
-#: What a section without `nav` is.
-_NO_LABEL = "leave the field out for a section without a link in the line of the sections"
+#: The hint for a section that should have no link.
+_NO_LABEL = "leave the field out for a section without a link in the navigation bar"
 TEXT_VARIANTS = ("body", "lead", "card", "signature")
 GROUP_FIELDS = ("title", "layout", "items")
 GROUP_LAYOUTS = ("list", "inline")
@@ -123,22 +123,20 @@ GUEST_FIELD_NAMES = frozenset(
     {*GUEST_FIELDS, *STAFF_RECORD_FIELDS, *SEAT_FIELDS, *GUEST_SECTION_FIELDS}
 )
 
-#: The largest seat number of a menu without a table.
+#: The highest seat number in a menu without a table.
 MAX_SEAT = 999
-#: The staff page shows every name and every dietary note: a shorter token
-#: of the staff record gets a warning.
+#: The staff page shows every name and every dietary note: a staff record
+#: token shorter than this gets a warning.
 STAFF_TOKEN_MIN = 16
-#: How many known ids a message lists at most.
-MAX_LISTED = 8
 
-#: The placeholder of a token: no text of the menu may hold it, the pages of
-#: the menu hold no token.
+#: The token placeholder: no menu text may hold it, since menu pages hold no
+#: token.
 TOKEN_PLACEHOLDER = "{token}"
 _LETTER_RE = re.compile(r"[A-Z]")
 
 _STAFF_ONLY_HINT = "is not allowed in the staff record: it has a token and nothing else"
-#: A guest cannot switch on a part for the staff only, so a hidden one is
-#: never shown.
+#: A guest cannot switch on a staff-only part, so a hidden one is never
+#: shown.
 _HIDDEN_STAFF_PART = "hides a part for the staff only: no page ever shows it (a guest cannot switch it on)"
 
 
@@ -182,7 +180,7 @@ class MenuIndex:
     table_ok: bool = False
     #: The number of seats of the table, when it can be counted.
     total: int | None = None
-    #: Seat -> position of the member of the couple who sits there.
+    #: Seat -> the position of the couple member who sits there.
     couple_seats: dict[int, int] = field(default_factory=dict)
     #: Seat -> its position in `reservedSeats` (only with a table: without
     #: one the list has no effect).
@@ -198,15 +196,15 @@ class MenuIndex:
     widget_ids: dict[str, list[str]] = field(default_factory=dict)
     #: (section id, widget id) -> who sees the widget: guest, staff or all.
     widget_audience: dict[tuple[str, str], str] = field(default_factory=dict)
-    #: False when a section has no usable id or type: the references of the
-    #: records to sections are not checked then.
+    #: False when a section has no usable id or type: record references to
+    #: sections are not checked then.
     sections_ok: bool = True
     #: Sections whose widgets are broken: references to them are not checked.
     broken_widgets: set[str] = field(default_factory=set)
-    #: The parts of the menu for the staff only, as paths.
+    #: The staff-only parts of the menu, as paths.
     staff_parts: list[str] = field(default_factory=list)
 
-    #: Number of guest records and the number of the staff record (0: none).
+    #: The number of guest records, and the staff record's number (0: none).
     guests: int = 0
     staff_record: int = 0
     #: A record has the field `staff`, even a broken one: it is meant to be
@@ -242,15 +240,15 @@ def guest_known(index: MenuIndex) -> frozenset[str]:
 
 
 def _braces(check: _Checker, value: Any, where: Sequence) -> bool:
-    """False (and an error) for a text with template syntax or the
-    placeholder of a token."""
+    """False (and an error) for a text with template syntax or the token
+    placeholder."""
     if not isinstance(value, str):
         return True
     if "{{" in value or "}}" in value:
-        check.error(where, "must not contain '{{' or '}}' (the texts of the menu have no template syntax)")
+        check.error(where, "must not contain '{{' or '}}' (menu texts have no template syntax)")
         return False
     if TOKEN_PLACEHOLDER in value:
-        check.error(where, "must not contain '{token}': the pages of the menu hold no token")
+        check.error(where, "must not contain '{token}': menu pages hold no token")
         return False
     return True
 
@@ -280,14 +278,6 @@ def _object(
         return None
     check.unknown_fields(value, fields, (*parts, key))
     return value
-
-
-def _known_list(registry: Iterable[str], what: str) -> str:
-    known = [item for item in registry if is_identifier(item)]
-    if not known:
-        return f"; there are no {what}s"
-    listed = ", ".join(known[:MAX_LISTED])
-    return f"; known: {listed}{', …' if len(known) > MAX_LISTED else ''}"
 
 
 def _registry(check: _Checker, obj: dict, key: str, parts: Sequence = (), *, required: bool = False) -> dict | None:
@@ -320,7 +310,7 @@ def _count(check: _Checker, value: Any, where: Sequence) -> int | None:
 
 
 def _in_range(check: _Checker, number: int, where: Sequence, index: MenuIndex) -> bool:
-    """A seat number the menu can have: one of the table, or up to MAX_SEAT."""
+    """A seat number the menu can have: a seat of the table, or up to MAX_SEAT."""
     if index.total is not None:
         if number > index.total:
             check.error(where, f"is not a seat of the table: it has {index.total} seats")
@@ -348,7 +338,7 @@ def _audience(value: Any) -> str:
 def _badges(
     check: _Checker, menu: dict, index: MenuIndex, number: int, requirements: Sequence[str], where: Sequence
 ) -> None:
-    """The dietary badges of a seat must fit around it on the staff plan."""
+    """A seat's dietary badges must fit around it on the staff plan."""
     if not index.table_ok or not requirements:
         return
     room = _table.badge_capacity(menu["table"], number)
@@ -408,7 +398,7 @@ def _check_version(check: _Checker, menu: dict) -> bool:
         shown = f" {version}" if isinstance(version, int) and not isinstance(version, bool) else f" {json_type(version)}"
         check.error(
             ("schemaVersion",),
-            f"is{shown} - not supported: this version of the menu reads version {SCHEMA_VERSION} only",
+            f"is{shown} - not supported: this builder reads version {SCHEMA_VERSION} only",
         )
         return False
     return True
@@ -692,7 +682,7 @@ def _check_sections(check: _Checker, menu: dict, index: MenuIndex) -> None:
     seating = 0
     covers: list[int] = []
     positions: dict[str, int] = {}
-    labels: dict[str, int] = {}  # a label of the line in lower case -> its section
+    labels: dict[str, int] = {}  # a navigation label in lower case -> its section
     for position, section in enumerate(sections):
         parts = ("sections", position)
         section = check.object(section, parts)
@@ -739,7 +729,7 @@ def _check_sections(check: _Checker, menu: dict, index: MenuIndex) -> None:
             if key in labels:
                 check.warning(
                     (*parts, "nav"),
-                    f"repeats the label of sections[{labels[key]}] in the line of the sections (letter case aside)",
+                    f"repeats the label of sections[{labels[key]}] in the navigation bar (letter case aside)",
                 )
             else:
                 labels[key] = position
@@ -787,12 +777,12 @@ def _check_widget(
     section_audience: str,
     section_hidden: bool = False,
 ) -> str | None:
-    """Check a widget; its type when it is usable.  `section_hidden`: the
-    section is for the staff only and hidden (its widgets are reported with it)."""
+    """Check a widget; return its type when it is usable.  `section_hidden`:
+    the section is staff-only and hidden (its widgets are reported with it)."""
 
     def broken() -> None:
         # the records may refer to this widget: their references to the
-        # widgets of the section are not checked, the problem is reported here
+        # section's widgets are not checked, since the problem is reported here
         if section_id is not None:
             index.broken_widgets.add(section_id)
 
@@ -996,8 +986,8 @@ def _check_seats(check: _Checker, record: dict, number: int, index: MenuIndex, m
     if len(seats) > colours:
         check.error(
             ("seats",),
-            f"lists {len(seats)} seats, at most {colours} are allowed: the page of a guest marks each seat "
-            "of the record in a colour of its own (split the record in two)",
+            f"lists {len(seats)} seats, at most {colours} are allowed: a guest page marks each of the "
+            "record's seats in a colour of its own (split the record in two)",
         )
     label = guest_label(number)
     own: dict[int, int] = {}  # seat -> position in this record

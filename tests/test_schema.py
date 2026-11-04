@@ -1,4 +1,4 @@
-"""Tests of the checks of the menu data (`menu_tools._schema`), standard library only.
+"""Tests of the menu data checks (`menu_tools._schema`), standard library only.
 
 Every broken copy of the fictional data (`CASES`) changes one thing and
 expects the exact messages; none of them may quote a token or a name.
@@ -26,14 +26,14 @@ def G(number: int) -> str:
 
 
 def check(menu, guests) -> tuple[_schema.MenuIndex, list[str], list[str]]:
-    """The index and the messages of the checks of both documents."""
+    """The index and the check messages for both documents."""
     report = _core.Report()
     index = _schema.check_data(menu, guests, report)
     return index, report.errors, report.warnings
 
 
 def full_check(menu, guests) -> tuple[list[str], list[str]]:
-    """The messages of the checks and, when there is no error, of what the
+    """The check messages and, when there is no error, those about what the
     page trees show."""
     report = _core.Report()
     index = _schema.check_data(menu, guests, report)
@@ -101,7 +101,7 @@ def _(menu, guests):
 
 @case(
     "unsupported_version",
-    errors=[M + "field 'schemaVersion' is 2 - not supported: this version of the menu reads version 1 only"],
+    errors=[M + "field 'schemaVersion' is 2 - not supported: this builder reads version 1 only"],
 )
 def _(menu, guests):
     menu["schemaVersion"] = 2
@@ -221,7 +221,7 @@ def _(menu, guests):
 
 @case(
     "template_syntax_in_a_dish_name",
-    errors=[M + "field 'dishes.hummus.name' must not contain '{{' or '}}' (the texts of the menu have no template syntax)"],
+    errors=[M + "field 'dishes.hummus.name' must not contain '{{' or '}}' (menu texts have no template syntax)"],
 )
 def _(menu, guests):
     menu["dishes"]["hummus"]["name"] = "Hummus {{ name }}"
@@ -229,7 +229,7 @@ def _(menu, guests):
 
 @case(
     "token_in_a_text",
-    errors=[M + "field 'sections[3].widgets[1].text' must not contain '{token}': the pages of the menu hold no token"],
+    errors=[M + "field 'sections[3].widgets[1].text' must not contain '{token}': menu pages hold no token"],
 )
 def _(menu, guests):
     menu["sections"][3]["widgets"][1]["text"] = "Your page: {token}"
@@ -237,7 +237,7 @@ def _(menu, guests):
 
 @case(
     "token_in_a_staff_text",
-    errors=[M + "field 'staff.reminder' must not contain '{token}': the pages of the menu hold no token"],
+    errors=[M + "field 'staff.reminder' must not contain '{token}': menu pages hold no token"],
 )
 def _(menu, guests):
     menu["staff"]["reminder"] = "The staff page is /menu/{token}/"
@@ -361,7 +361,7 @@ def _(menu, guests):
 
 
 # --------------------------------------------------------------------------
-# Headings of the parts of a section (the base `parts`: sections[2] is the
+# Section part headings (the base `parts`: sections[2] is the
 # food in two parts, sections[4] the texts under headings, its last part for
 # the staff only)
 # --------------------------------------------------------------------------
@@ -405,7 +405,7 @@ def _(menu, guests):
 
 
 @case("token_in_a_heading", base="parts",
-      errors=[M + "field 'sections[4].widgets[0].title' must not contain '{token}': the pages of the menu hold no token"])
+      errors=[M + "field 'sections[4].widgets[0].title' must not contain '{token}': menu pages hold no token"])
 def _(menu, guests):
     info(menu)[0]["title"] = "Smoking {token}"
 
@@ -429,7 +429,7 @@ def _(menu, guests):
 
 
 # --------------------------------------------------------------------------
-# The labels of the line of the sections
+# The navigation bar labels
 # --------------------------------------------------------------------------
 
 
@@ -440,7 +440,7 @@ def _(menu, guests):
 
 @case("empty_label", base="parts", errors=[
     M + "field 'sections[2].nav' must not be empty: leave the field out for a section without a link in the "
-    "line of the sections"])
+    "navigation bar"])
 def _(menu, guests):
     menu["sections"][2]["nav"] = " "
 
@@ -457,7 +457,7 @@ def _(menu, guests):
 
 
 @case("label_repeated", base="parts", warnings=[
-    M + "field 'sections[4].nav' repeats the label of sections[2] in the line of the sections (letter case aside)"])
+    M + "field 'sections[4].nav' repeats the label of sections[2] in the navigation bar (letter case aside)"])
 def _(menu, guests):
     menu["sections"][4]["nav"] = " FOOD"
 
@@ -500,8 +500,8 @@ def _(menu, guests):
 @case(
     "more_seats_than_colours",
     base="mockup16",
-    errors=[G(1) + "field 'seats' lists 4 seats, at most 3 are allowed: the page of a guest marks each seat "
-            "of the record in a colour of its own (split the record in two)"],
+    errors=[G(1) + "field 'seats' lists 4 seats, at most 3 are allowed: a guest page marks each of the "
+            "record's seats in a colour of its own (split the record in two)"],
 )
 def _(menu, guests):
     record(guests, "Olga")["seats"] += [{"number": 12, "name": "Hugo"}, {"number": 13, "name": "Oscar"}]
@@ -605,8 +605,8 @@ def _(menu, guests):
 @case(
     "reserved_token",
     errors=[
-        G(4) + "'token' is a reserved name: the directory of the page would be the directory of the files the "
-        "pages share (letter case aside); choose another token"
+        G(4) + "'token' is a reserved name: its page directory would be the shared-files directory "
+        "(letter case aside); choose another token"
     ],
 )
 def _(menu, guests):
@@ -707,7 +707,7 @@ def _(menu, guests):
     warnings=[M + "field 'reservedSeats' has no effect without 'table': only a table plan shows free seats"],
 )
 def _(menu, guests):
-    # the seat of a guest: the list has no effect, so that is no error either
+    # a guest's seat: the list has no effect, so that is no error either
     menu["reservedSeats"] = [1]
 
 
@@ -858,10 +858,10 @@ class FixturesTest(unittest.TestCase):
         menu["sections"].insert(4, {**kitchen_section(), "nav": "Kitchen"})
         menu["sections"][-1]["nav"] = "Thanks"
         self.assertEqual(full_check(menu, guests), ([], []))
-        # the same label once in a lower and once in an upper case: one warning
+        # the same label once in lower case and once in upper case: one warning
         menu["sections"][-1]["nav"] = "kitchen"
         self.assertEqual(full_check(menu, guests), ([], [
-            M + "field 'sections[6].nav' repeats the label of sections[4] in the line of the sections "
+            M + "field 'sections[6].nav' repeats the label of sections[4] in the navigation bar "
             "(letter case aside)"]))
 
 
@@ -881,8 +881,8 @@ def row_table() -> dict:
 
 class TableMessagesTest(unittest.TestCase):
     def test_couple_label_on_the_spot_of_a_label_of_a_guest(self):
-        # the couple label lies on the staff plan, the label "You" on the plan
-        # of a guest: one may take the spot of the other
+        # the couple label is on the staff plan, the label "You" on a guest's
+        # plan: one may take the other's spot
         menu, guests = fixtures.plain()
         menu["table"] = row_table()
         menu["couple"] = {"label": fixtures.COUPLE_LABEL, "members": [{"seat": 4, "name": "Vera"}]}

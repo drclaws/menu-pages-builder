@@ -1,4 +1,4 @@
-"""Tests of the checks of the finished output (`menu_tools/_output.py`).
+"""Tests of the finished output checks (`menu_tools/_output.py`).
 
 The output directories are made by hand: three pages and the files the
 build copies into `assets/`.
@@ -20,7 +20,7 @@ SECRET_TEXT = "Rosalind sits next to Leopold"
 
 
 def page(base: str, body: str = "") -> str:
-    """A page that passes every check of the output under `base`."""
+    """A page that passes every output check under `base`."""
     assets = f"{base.rstrip('/')}/assets"
     return (
         "<!doctype html>\n"
@@ -40,7 +40,7 @@ def page(base: str, body: str = "") -> str:
     )
 
 
-#: The line of `body` in a page of `page`.
+#: The line of `body` in a page from `page`.
 BODY_LINE = page("/").splitlines().index("") + 1
 
 
@@ -155,7 +155,7 @@ class OutputChecksTest(support.TempDirTestCase):
 
     def test_a_link_outside_the_output_is_an_error(self):
         # another part of the site: outside the base path /menu, and a file
-        # the output does not have at the top of the site; it is no part of
+        # the output does not have at the top of the site; it is not part of
         # the page either
         not_a_part = f"…/index.html line {BODY_LINE}: <a href> {_output.LINK_RULE}"
         expected = {"/menu": "points outside the output", "/": "does not exist in the output"}
@@ -166,7 +166,7 @@ class OutputChecksTest(support.TempDirTestCase):
                     f"…/index.html line {BODY_LINE}: <a href>: '/…' {words}",
                     not_a_part,
                 ])
-                # with the token of the page in the address, that is a problem too
+                # with the page's token in the address, that is a problem too
                 out = self.make_output(base, {TOKENS[0]: f'<a href="{ELSEWHERE}{TOKENS[0]}/">Other</a>'})
                 self.assertEqual(self.problems(out, base), [
                     f"…/index.html line {BODY_LINE}: <a href>: '/…' {words}",
@@ -190,7 +190,7 @@ class OutputChecksTest(support.TempDirTestCase):
 
     def test_a_link_to_a_part_of_the_same_page_passes(self):
         self.assertEqual(_output.LINK_RULE,
-                         "must lead to a part of the same page ('#' and the id of an element of the page)")
+                         "must lead to a part of the same page ('#' and the id of an element on it)")
         bodies = {
             "the target after the link": '<a href="#s-food">Food</a>\n<section id="s-food"></section>',
             "the target before the link": '<h2 id="top">Menu</h2>\n<a href="#top">Top</a>',
@@ -226,7 +226,7 @@ class OutputChecksTest(support.TempDirTestCase):
         }
         for name, (body, expected) in cases.items():
             with self.subTest(case=name):
-                # the id of the last case stands on another page of the output
+                # the id of the last case is on another output page
                 out = self.make_output(bodies={TOKENS[0]: body, TOKENS[1]: '<p id="elsewhere">x</p>'})
                 problems = self.problems(out)
                 self.assertEqual(problems, expected)
@@ -248,8 +248,8 @@ class OutputChecksTest(support.TempDirTestCase):
                          [(3, f"<a href> {_output.LINK_TARGET_PROBLEM}")])
 
     def test_no_file_holds_a_token(self):
-        self.assertEqual(_output.TOKEN_RULE, "a token is only the name of the directory of its page")
-        # the own token on its page, another one in upper case, the staff token in the style sheet
+        self.assertEqual(_output.TOKEN_RULE, "a token is only the name of its page directory")
+        # a page's own token, another one in upper case, the staff token in the style sheet
         out = self.make_output(bodies={TOKENS[0]: f"<p>{TOKENS[0]}</p>", TOKENS[2]: f"<p>{TOKENS[1].upper()}</p>"})
         with open(out / "assets" / "app.css", "a", encoding="utf-8") as handle:
             handle.write(f"/* {TOKENS[2].lower()} */\n")

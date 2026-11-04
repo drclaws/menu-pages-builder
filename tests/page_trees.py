@@ -1,24 +1,24 @@
-"""Page trees written by hand, for the tests of the template and the fragments.
+"""Hand-written page trees for the template and fragment tests.
 
 A page tree is what the template and the fragments read: one tree per page,
-the page of a guest or the staff page.  Every field of the contract always
-exists - an empty string, `[]`, `False`, `0` or `None` stands for a missing
-value - and a fragment reads nothing else.
+a guest page or the staff page.  Every contract field always exists - an
+empty string, `[]`, `False`, `0` or `None` stands for a missing value - and
+a fragment reads nothing else.
 
-`NODES` is that contract: the fields of every kind of node.  `CHILDREN` names
-the kind of the nodes below a field (one object, or a list of objects); the
+`NODES` is that contract: the fields of every node kind.  `CHILDREN` names
+the kind of node below a field (one object, or a list of objects); the
 other fields hold strings, numbers, flags or lists of strings.  `node()`
 refuses a node whose fields are not exactly those of its kind, so a tree here
 cannot drift from the contract.
 
-The data is fictional and follows the design of the pages: the dinner of
-Ivan & Vera at a bistro, an L-shaped table of sixteen seats.  Only one tree
-has the line of the sections (`nav`): the others render as pages without it.
+The data is fictional and follows the page design: Ivan & Vera's dinner at
+a bistro, an L-shaped table of sixteen seats.  Only one tree has the
+navigation bar (`nav`): the others render as pages without it.
 The trees:
 
 * `guest_plus_one` - Olga with her +1 at seats 8 and 9, in two colours on the
-  plan of the table and named in the same colours under it; the +1 has no
-  name ("your guest");
+  table plan and named in the same colours under it; the +1 has no name
+  ("your guest");
 * `guest_alone` - Boris alone at seat 3: his seat on the plan with the label
   "You", one set;
 * `guest_without_table` - Klara at seat 1 of a menu without a table, with
@@ -26,33 +26,33 @@ The trees:
 * `guest_pair` - Peggy and Victor, one record with two named seats, one set;
   the menu has a table, but the widget shows no plan (the scheme is `None`:
   the page reads the same without a drawing);
-* `guest_parts` - Nina with her +1 Oscar at seats 15 and 16, named under the
-  plan, without a plan: the food in one section of two parts under their
-  headings (the set cards under the second one a level lower), a section of
-  texts under headings, the line of the sections over it all (the signature
-  has no link there);
+* `guest_parts` - Nina with her +1 Oscar at seats 15 and 16, both named in
+  the seating card, which has no plan: the food in one section of two parts
+  under their headings (the set cards under the second one a level lower), a
+  section of texts under headings, the navigation bar above it all (the
+  signature has no link there);
 * `staff` - the staff page: the legend, the plan with the couple and the
-  badges of the dietary notes, every seat (a free and a reserved one among
-  them, a +1 with a name and one without), the swaps, a dish for the staff
-  only, the notes for the staff.
+  dietary note badges, every seat (a free and a reserved one among them,
+  a +1 with a name and one without), the swaps, a dish for the staff only,
+  the notes for the staff.
 
-The plan of a guest has no couple and no numbers of the seats: those are on
-the staff plan alone.
+A guest's plan has no couple and no seat numbers: those are on the staff
+plan alone.
 """
 
 from __future__ import annotations
 
 from typing import Iterator
 
-#: The types of sections and widgets: the names of the files in
-#: fragments/sections/ and fragments/widgets/.
+#: The section and widget types: the file names in fragments/sections/ and
+#: fragments/widgets/.
 SECTION_TYPES = ("cover", "custom")
 WIDGET_TYPES = ("text", "seating", "dishes", "sets", "drinks", "heading")
 
 #: The fields every widget has, whatever its type.
 WIDGET_COMMON_FIELDS = ("type", "domId", "labelledBy")
 
-#: The fields of every kind of node; a widget is of the kind `widget:<type>`.
+#: The fields of every node kind; a widget's kind is `widget:<type>`.
 NODES = {
     "root": ("isStaff", "coupleNames", "event", "assetsPath", "faviconPath", "themeColor",
              "staff", "counters", "nav", "sections"),
@@ -62,13 +62,11 @@ NODES = {
     "counters": ("guests", "notes", "guestsText", "notesText", "tableLabel"),
     "section": ("id", "type", "domId", "titleId", "title", "eyebrow", "note", "widgets"),
     "widget:text": WIDGET_COMMON_FIELDS + ("text", "variant"),
-    "widget:seating": WIDGET_COMMON_FIELDS + ("scheme", "mySeats", "names", "legend", "rows",
-                                              "footnote"),
+    "widget:seating": WIDGET_COMMON_FIELDS + ("scheme", "names", "legend", "rows", "footnote"),
     "widget:dishes": WIDGET_COMMON_FIELDS + ("title", "items"),
-    "widget:sets": WIDGET_COMMON_FIELDS + ("items", "note", "count", "multiple"),
+    "widget:sets": WIDGET_COMMON_FIELDS + ("items", "note", "multiple"),
     "widget:drinks": WIDGET_COMMON_FIELDS + ("groups", "list", "note"),
     "widget:heading": WIDGET_COMMON_FIELDS + ("titleId", "title", "eyebrow"),
-    "mySeat": ("number", "mark"),
     "seatName": ("name", "colour"),
     "legend": ("letter", "label"),
     "row": ("number", "name", "isPlusOne", "hostName", "roleLabel", "isCouple", "isFree",
@@ -85,8 +83,8 @@ NODES = {
     "schemeLabel": ("x", "y", "anchor"),
 }
 
-#: (kind, field) -> the kind of the node below the field, or of every node of
-#: the list there.  `widget` stands for `widget:<type>` of each node.
+#: (kind, field) -> the kind of the node below the field, or of every node in
+#: the list there.  `widget` stands for each node's `widget:<type>`.
 CHILDREN = {
     ("root", "event"): "event",
     ("root", "staff"): "staff",
@@ -95,7 +93,6 @@ CHILDREN = {
     ("root", "sections"): "section",
     ("section", "widgets"): "widget",
     ("widget:seating", "scheme"): "scheme",
-    ("widget:seating", "mySeats"): "mySeat",
     ("widget:seating", "names"): "seatName",
     ("widget:seating", "legend"): "legend",
     ("widget:seating", "rows"): "row",
@@ -110,9 +107,6 @@ CHILDREN = {
     ("scheme", "badges"): "schemeBadge",
     ("scheme", "labels"): "schemeLabel",
 }
-
-#: The marks of the guest's own seats (`mySeats[].mark`): codes, not words.
-MY_SEAT_MARKS = ("you", "plusOne", "none")
 
 #: Checked enumerations: the only fields a class modifier may come from.
 ENUMS = {
@@ -131,9 +125,9 @@ def node_kind(kind: str, value: dict) -> str:
 
 
 def node(kind: str, /, **values) -> dict:
-    """A node of `kind` with exactly the fields of the contract, in their order.
+    """A node of `kind` with exactly the contract fields, in their order.
 
-    `kind` is positional only: a seat of the scheme has a field of that name.
+    `kind` is positional only: a scheme seat has a field of that name.
     """
     fields = NODES[node_kind(kind, values)]
     missing = sorted(set(fields) - set(values))
@@ -165,8 +159,8 @@ ASSETS = "/assets"
 
 def root(*, staff_page: bool, sections: list, staff: dict | None = None,
          counters: dict | None = None, nav: tuple = ()) -> dict:
-    """The root of a page; a guest's page has the staff fields empty.  `nav`
-    is (label, id of a section) of every link of the line of the sections."""
+    """The root of a page; a guest page leaves the staff fields empty.  `nav`
+    is (label, section id) for every link in the navigation bar."""
     return node(
         "root", isStaff=staff_page, coupleNames=COUPLE, event=node("event", **EVENT),
         assetsPath=ASSETS, faviconPath=f"{ASSETS}/favicon.svg", themeColor="#f1f2f4",
@@ -179,7 +173,7 @@ def root(*, staff_page: bool, sections: list, staff: dict | None = None,
 
 
 def cover() -> dict:
-    """The cover: it shows the fields of the root, its own are empty."""
+    """The cover: it shows the root's fields; its own are empty."""
     return node("section", id="cover", type="cover", domId="s-cover", titleId="s-cover--title",
                 title="", eyebrow="", note="", widgets=[])
 
@@ -194,14 +188,14 @@ def section(section_id: str, title: str, eyebrow: str = "", note: str = "",
 
 def widget(kind: str, section_id: str, number: int, *, labelled_by: str = "", **fields) -> dict:
     """A widget; `number` is its place in the data (hidden ones count as well).
-    It is labelled by the title of its section unless `labelled_by` says
-    otherwise (the sets under the heading of a part)."""
+    It is labelled by its section title unless `labelled_by` says otherwise
+    (the sets under a part heading)."""
     return node("widget", type=kind, domId=f"s-{section_id}--w{number}",
                 labelledBy=labelled_by or f"s-{section_id}--title", **fields)
 
 
 def heading(section_id: str, number: int, title: str, eyebrow: str = "") -> dict:
-    """The heading of a part of a section."""
+    """The heading of a section part."""
     return widget("heading", section_id, number, titleId=f"s-{section_id}--w{number}--title",
                   title=title, eyebrow=eyebrow)
 
@@ -218,12 +212,11 @@ def dishes(entries: tuple, staff_page: bool) -> list[dict]:
             for name, ingredients, extra in entries]
 
 
-def seating(section_id: str, *, scheme: dict | None = None, my_seats: tuple = (),
-            names: tuple = (), legend: tuple = (), rows: tuple = (), footnote: str = "") -> dict:
-    """The seating widget; `names` are who sits at the seats of the record,
-    in their order: each takes the colour of its place."""
+def seating(section_id: str, *, scheme: dict | None = None, names: tuple = (),
+            legend: tuple = (), rows: tuple = (), footnote: str = "") -> dict:
+    """The seating widget; `names` are who sits at the record's seats, in
+    order: each takes the colour of its place."""
     return widget("seating", section_id, 1, scheme=scheme,
-                  mySeats=[node("mySeat", number=number, mark=mark) for number, mark in my_seats],
                   names=[node("seatName", name=name, colour=colour)
                          for name, colour in zip(names, ENUMS["colour"])],
                   legend=[node("legend", letter=letter, label=label) for letter, label in legend],
@@ -239,7 +232,7 @@ def row(number: int, name: str = "", *, plus_one_of: str = "", role: str = "",
 
 def sets(widget_dom_id: str, entries: tuple, staff_page: bool, nested: bool = False) -> list[dict]:
     """The sets of `entries` for a page; the swaps are for the staff only.
-    `nested`: the widget stands under the heading of a part."""
+    `nested`: the widget stands under a part heading."""
     return [
         node("set", id=set_id, domId=f"{widget_dom_id}--set-{set_id}", title=title, hint=hint,
              eyebrow=eyebrow, courses=dishes(courses, staff_page), pairing=pairing,
@@ -252,7 +245,7 @@ def drink(category: str, name: str, line: str = "") -> dict:
     return node("drink", category=category, name=name, line=line)
 
 
-# --- the menu of the dinner ----------------------------------------------------
+# --- the dinner menu -----------------------------------------------------------
 
 STARTERS = (
     ("Beetroot tartare", "Beetroot, walnuts, rye crisp",
@@ -270,7 +263,7 @@ STARTERS = (
     ("Marinated olives", "Olives, lemon, thyme", {"no_restrictions": True}),
 )
 
-#: A dish of a widget for the staff only: the guest pages never have it.
+#: A widget dish for the staff only: guest pages never have it.
 ON_REQUEST = (
     ("Mushroom risotto", "Arborio rice, porcini, parmesan",
      {"allergens": ("lactose",), "note": "Only when a guest asks for it"}),
@@ -292,7 +285,7 @@ SETS = (
       "By seat 10 (no gluten) — serve the first course without croutons.")),
 )
 
-#: The starters of a menu without a table, under a title of the list.
+#: The starters of a menu without a table, under a list title.
 PLAIN_STARTERS = (
     ("Sourdough and butter", "Sourdough bread, salted butter", {}),
     ("Garden salad", "Leaves, radish, lemon dressing", {}),
@@ -318,7 +311,7 @@ SOFT_DRINKS = "Still and sparkling water, lemonade, apple juice, tea and coffee"
 
 
 def guest_drinks(section_id: str, number: int) -> dict:
-    """The drinks of a guest: one line of soft drinks, a list of wines, a note."""
+    """A guest's drinks: one line of soft drinks, a list of wines, a note."""
     return widget("drinks", section_id, number, groups=[
         node("group", title="Soft drinks", layout="inline", joined=SOFT_DRINKS, items=[]),
         node("group", title="Wines", layout="list", joined="", items=[
@@ -333,7 +326,7 @@ def guest_drinks(section_id: str, number: int) -> dict:
 
 
 def staff_drinks(section_id: str, number: int) -> dict:
-    """The drinks of the staff page: one list, what to serve and when."""
+    """The drinks on the staff page: one list, what to serve and when."""
     return widget("drinks", section_id, number, groups=[], list=[
         drink("Sparkling", "Example Brut, Riverside Cellars",
               "with the starters · 6 bottles · from 19:00, well chilled · seat 1 — no alcohol"),
@@ -345,16 +338,16 @@ def staff_drinks(section_id: str, number: int) -> dict:
 
 
 def signature(note: str = "") -> dict:
-    """The closing section of a guest's page: the names of the couple."""
+    """The closing section of a guest page: the couple's names."""
     return section("signature", "Enjoy the evening!", note=note, widgets=[
         widget("text", "signature", 1, text=COUPLE, variant="signature"),
     ])
 
 
-# --- the plan of the table -------------------------------------------------------
+# --- the table plan --------------------------------------------------------------
 
 TABLE_LABEL = "L-shaped table"
-#: The outline of the two arms and the centres of the sixteen seats, in the
+#: The outline of the two arms and the centres of the sixteen seats, in
 #: units of the 318 x 310 field, as the geometry lays out the table.
 TABLE_OUTLINE = ("M50 60L230 60A10 10 0 0 1 240 70L240 250A10 10 0 0 1 230 260L198 260"
                  "A10 10 0 0 1 188 250L188 112L50 112A10 10 0 0 1 40 102L40 70"
@@ -370,12 +363,12 @@ COUPLE_LABEL = COUPLE.replace("&", "·").upper()
 
 def scheme(*, staff_page: bool, own: tuple = (), mine: str = "", flagged: tuple = (),
            badges: tuple = (), label: tuple = ()) -> dict:
-    """The plan of the L-shaped table for a page, every number a string.
+    """The L-shaped table plan for a page, every number a string.
 
-    `own` are the guest's seats in the order of the record (each takes the
-    colour of its place), `flagged` the seats with a dietary note; `badges`
-    are (letter, cx, cy), `label` the (x, y, anchor) of "You".  The staff
-    plan has the couple, the plan of a guest does not.
+    `own` are the guest's seats in record order (each takes the colour of
+    its place), `flagged` the seats with a dietary note; `badges` are
+    (letter, cx, cy), `label` the (x, y, anchor) of "You".  The staff plan
+    has the couple, a guest's plan does not.
     """
     colours = dict(zip(own, ENUMS["colour"]))
     seats = []
@@ -403,19 +396,18 @@ def scheme(*, staff_page: bool, own: tuple = (), mine: str = "", flagged: tuple 
 # --- the trees -------------------------------------------------------------------
 
 def guest_plus_one() -> dict:
-    """Olga and her +1 at seats 8 and 9, the whole menu, a note to one section."""
+    """Olga and her +1 at seats 8 and 9, the whole menu, a note on one section."""
     return root(staff_page=False, sections=[
         cover(),
         section("seats", "Your seats", widgets=[seating(
             "seats",
             scheme=scheme(staff_page=False, own=(8, 9), mine="Olga — blue, your guest — dark red"),
-            my_seats=((8, "you"), (9, "plusOne")), names=("Olga", "your guest"))]),
+            names=("Olga", "your guest"))]),
         section("starters", "Starters", "Shared plates for the table", widgets=[
             widget("dishes", "starters", 1, title="", items=dishes(STARTERS, False))]),
         section("main", "Main course", "Choose one of two sets", widgets=[
             widget("sets", "main", 1, items=sets("s-main--w1", SETS, False),
-                   note="Your waiter will take your choice after the starters.", count=2,
-                   multiple=True),
+                   note="Your waiter will take your choice after the starters.", multiple=True),
             widget("text", "main", 2, text=ALLERGY_NOTE, variant="card"),
         ]),
         section("drinks", "Drinks", widgets=[guest_drinks("drinks", 1)]),
@@ -430,10 +422,10 @@ def guest_alone() -> dict:
         section("seats", "Your seat", widgets=[seating(
             "seats",
             scheme=scheme(staff_page=False, own=(3,), mine="Boris — blue", label=(98, 10, "middle")),
-            my_seats=((3, "you"),), names=("Boris",))]),
+            names=("Boris",))]),
         section("main", "Main course", widgets=[
             widget("sets", "main", 1, items=sets("s-main--w1", SETS[1:], False), note="",
-                   count=1, multiple=False)]),
+                   multiple=False)]),
         signature(),
     ])
 
@@ -451,13 +443,13 @@ def guest_without_table() -> dict:
                    variant="body"),
         ]),
         section("seats", "Your seat", widgets=[seating(
-            "seats", my_seats=((1, "you"),), names=("Klara",))]),
+            "seats", names=("Klara",))]),
         section("starters", "Starters", widgets=[
             widget("dishes", "starters", 1, title="For the table",
                    items=dishes(PLAIN_STARTERS, False))]),
         section("main", "Main course", "Choose one of three sets", widgets=[
             widget("sets", "main", 1, items=sets("s-main--w1", PLAIN_SETS, False), note="",
-                   count=3, multiple=True)]),
+                   multiple=True)]),
         section("drinks", "Drinks", widgets=[widget("drinks", "drinks", 1, groups=[
             node("group", title="", layout="inline", joined="Water, lemonade, tea and coffee",
                  items=[])], list=[], note="")]),
@@ -469,15 +461,15 @@ def guest_pair() -> dict:
     return root(staff_page=False, sections=[
         cover(),
         section("seats", "Your seats", widgets=[seating(
-            "seats", my_seats=((12, "you"), (13, "none")), names=("Peggy", "Victor"))]),
+            "seats", names=("Peggy", "Victor"))]),
         section("main", "Main course", widgets=[
             widget("sets", "main", 1, items=sets("s-main--w1", SETS[:1], False), note="",
-                   count=1, multiple=False)]),
+                   multiple=False)]),
         signature(),
     ])
 
 
-#: The texts of the section of short notes: (heading, text).
+#: The texts of the short-notes section: (heading, text).
 INFO = (("Smoking", "Smoking is fine on the terrace by the river."),
         ("Instant camera", "An instant camera waits at the bar: take a picture and leave it for "
                            "the couple."))
@@ -493,7 +485,7 @@ def guest_parts() -> dict:
     return root(staff_page=False, nav=nav, sections=[
         cover(),
         section("seats", "Your seats", widgets=[seating(
-            "seats", my_seats=((15, "you"), (16, "plusOne")), names=("Nina", "Oscar"))]),
+            "seats", names=("Nina", "Oscar"))]),
         section("food", "Food", widgets=[
             heading("food", 1, "Starters", "Shared plates for the table"),
             widget("dishes", "food", 2, title="", items=dishes(STARTERS[:3], False)),
@@ -501,8 +493,7 @@ def guest_parts() -> dict:
             heading("food", 4, "Main course", "Choose one of two sets"),
             widget("sets", "food", 5, labelled_by="s-food--w4--title",
                    items=sets("s-food--w5", SETS, False, nested=True),
-                   note="Your waiter will take your choice after the starters.", count=2,
-                   multiple=True),
+                   note="Your waiter will take your choice after the starters.", multiple=True),
             widget("text", "food", 6, text=ALLERGY_NOTE, variant="card"),
         ]),
         section("drinks", "Drinks", widgets=[guest_drinks("drinks", 1)]),
@@ -555,14 +546,14 @@ def staff() -> dict:
             ]),
             section("main", "Main course", "Two sets · guests choose at the table", widgets=[
                 widget("sets", "main", 1, items=sets("s-main--w1", SETS, True),
-                       note="The kitchen needs every order by 20:00.", count=2, multiple=True)]),
+                       note="The kitchen needs every order by 20:00.", multiple=True)]),
             section("drinks", "Drinks", "What to serve and when",
                     widgets=[staff_drinks("drinks", 2)]),
         ],
     )
 
 
-#: The trees by name; the names also name the directories of rendered pages.
+#: The trees by name; the names also name the rendered page directories.
 TREES = {
     "guest-plus-one": guest_plus_one,
     "guest-alone": guest_alone,

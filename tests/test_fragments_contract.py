@@ -1,14 +1,14 @@
-"""The page template and the fragments against the contract of the page tree.
+"""The page template and the fragments against the page tree contract.
 
 The trees are written by hand (`tests/page_trees.py`) and built by the data
-layer (`menu_tools._page.build_trees`) from the data sets of
-`tests/fixtures.py`, so the fragments and the data layer cannot drift apart
-unnoticed.  Every node is wrapped in a `Strict` dict, which fails when a
-fragment asks for a field that its kind of node does not have, even inside an
-`if:`, and which records every field a fragment asks for: a field of the
-contract that no fragment reads has to be listed in `UNREAD` with its reason.
-The pages are rendered the way the build publishes them (the comments
-removed) and go through the checks of a finished HTML page (`check_html`).
+layer (`menu_tools._page.build_trees`) from the `tests/fixtures.py` data
+sets, so the fragments and the data layer cannot drift apart unnoticed.
+Every node is wrapped in a `Strict` dict, which fails when a fragment asks
+for a field that its node kind does not have, even inside an `if:`, and
+which records every field a fragment asks for: a contract field that no
+fragment reads has to be listed in `UNREAD` with its reason.  The pages are
+rendered the way the build publishes them (comments removed) and go through
+the finished HTML page checks (`check_html`).
 """
 
 from __future__ import annotations
@@ -33,27 +33,23 @@ TEMPLATE = ROOT / "template.html"
 FRAGMENTS_DIR = ROOT / "fragments"
 APP_JS = ROOT / "assets" / "app.js"
 
-#: The files of the output a page refers to.
+#: The output files a page refers to.
 PUBLISHED = frozenset({"assets/app.css", "assets/app.js", "assets/favicon.svg"})
 
-#: The partials: the shared pieces that no value of the data can choose.
+#: The partials: the shared pieces that no data value can choose.
 PARTIALS = ("dish-item", "legend", "pills", "scheme", "section-head", "section-nav",
             "section-note", "sections", "seat-table")
 
-#: The kinds of node of the plan of the table.
+#: The node kinds of the table plan.
 SCHEME_KINDS = ("scheme", "schemeCouple", "schemeSeat", "schemeBadge", "schemeLabel")
 
-#: The fields of the contract that no fragment reads, with the reason.
+#: The contract fields that no fragment reads, with the reason.
 UNREAD = {
     "section.id": "the id of the data; the page names a section by its domId",
     "set.id": "the id of the data; the page names a set by its domId",
-    "sets.count": "the script counts the tabs itself; multiple tells whether there are tabs",
-    "seating.mySeats": "the page shows the own seats on the scheme and by the names under it",
-    "mySeat.number": "a field of mySeats",
-    "mySeat.mark": "a field of mySeats",
 }
 
-#: The fields that only the staff page fills: a guest's page has them empty
+#: The fields that only the staff page fills: a guest page leaves them empty
 #: and never reads them.
 STAFF_ONLY = frozenset({
     "root.staff", "staff.updated", "staff.contact", "staff.reminder",
@@ -66,23 +62,22 @@ STAFF_ONLY = frozenset({
     "dish.allergens", "dish.tags", "dish.noRestrictions", "dish.swapLines", "dish.note",
     "set.swapLines", "drinks.list",
 })
-#: The fields that only a guest's page fills: the staff page has them empty
+#: The fields that only a guest page fills: the staff page leaves them empty
 #: (or has no such widget) and never reads them.
 GUEST_ONLY = frozenset({
-    "seating.mySeats", *(f"mySeat.{field}" for field in T.NODES["mySeat"]),
     "seating.names", *(f"seatName.{field}" for field in T.NODES["seatName"]),
     "scheme.labels", "scheme.mine", "scheme.single", "schemeSeat.colour",
     *(f"schemeLabel.{field}" for field in T.NODES["schemeLabel"]),
     "drinks.groups", *(f"group.{field}" for field in T.NODES["group"]),
 })
 
-#: The words of the interface: they live in the fragments, never in the tree.
+#: The interface words: they live in the fragments, never in the tree.
 STAFF_WORDS = ("Staff version · not for guests", "updated", "No.", "Guest · dietary notes",
                "’s guest", "[name]", "no restrictions", "Contact on the night:")
-#: The words of the plan of the table: its name and the label of the guest's seat.
+#: The table plan words: its name and the guest's seat label.
 SCHEME_WORDS = ("Table plan", "seats", "Your seat", "Your seats", "You")
-#: The classes of the parts that the staff page alone has: the couple and the
-#: numbers of the seats among them.
+#: The classes of the parts only the staff page has: the couple and the seat
+#: numbers among them.
 STAFF_CLASSES = ("staff-bar", "staff-footer", "cover--staff", "cover__counters", "legend",
                  "seat-table", "seat-number", "pills", "pill", "dish__line", "sets__swaps",
                  "drinks__staff", "seating__footnote", "seating__divider", "seat-badge",
@@ -101,13 +96,13 @@ def field_name(kind: str, field: str) -> str:
     return f"{kind}.{field}"
 
 
-#: Every field of the contract, by its name.
+#: Every contract field, by name.
 CONTRACT = frozenset(field_name(kind, field) for kind, fields in T.NODES.items()
                      for field in fields)
 
 
 class Strict(dict):
-    """A node of the page tree that fails on a field outside its kind.
+    """A page tree node that fails on a field outside its kind.
 
     The template engine looks a field up with `in` before it takes the value,
     so `__contains__` sees every field a fragment asks for and records it.
@@ -147,8 +142,8 @@ def render_page(tree: dict, template: core.Template | None = None) -> str:
 
 
 def render_strict(tree: dict, template: core.Template, reads: set[str] | None = None) -> str:
-    """The page of `tree` with every node `Strict`: a variant of a tree reaches
-    branches the four trees do not, and a field outside the contract read
+    """The page of `tree` with every node `Strict`: a tree variant reaches
+    branches the four trees do not, and reading a field outside the contract
     there fails as well."""
     return render_page(strict(tree, set() if reads is None else reads), template)
 
@@ -245,7 +240,7 @@ class Outline(HTMLParser):
 
 
 def tabs_hooks() -> list[str]:
-    """The data attributes the tabs module of the script looks for."""
+    """The data attributes the script's tabs module looks for."""
     source = APP_JS.read_text(encoding="utf-8")
     module = source[source.index("Module tabs"):source.index("Module reveal")]
     hooks = re.findall(r"'\[(data-[a-z-]+)\]'", module)
@@ -254,7 +249,7 @@ def tabs_hooks() -> list[str]:
 
 
 def section_nav_hooks() -> list[str]:
-    """The data attributes the sectionNav module of the script looks for."""
+    """The data attributes the script's sectionNav module looks for."""
     source = APP_JS.read_text(encoding="utf-8")
     module = source[source.index("Module sectionNav"):]
     hooks = re.findall(r"'\[(data-[a-z-]+)\]'", module)
@@ -272,10 +267,10 @@ class TreeTests(unittest.TestCase):
                 seen.add(kind)
                 with self.subTest(tree=name, node=kind):
                     self.assertEqual(list(value), list(T.NODES[kind]))
-        # every kind of node is in a tree, the plan of the table too
+        # every node kind is in a tree, the table plan too
         self.assertEqual(seen, set(T.NODES))
-        # the plan of a guest of one seat has the label, the staff plan the
-        # badges and the couple, the plan of a guest of two seats none of them
+        # a one-seat guest's plan has the label, the staff plan the badges
+        # and the couple, a two-seat guest's plan none of them
         cases = (("guest-alone", {"schemeLabel"}), ("guest-plus-one", set()),
                  ("staff", {"schemeBadge", "schemeCouple"}))
         for name, kinds in cases:
@@ -292,12 +287,7 @@ class TreeTests(unittest.TestCase):
     def test_the_trees_cover_the_cases(self):
         trees = T.all_trees()
         plus_one = widgets_of(trees["guest-plus-one"], "seating")[0]
-        self.assertEqual([(seat["number"], seat["mark"]) for seat in plus_one["mySeats"]],
-                         [(8, "you"), (9, "plusOne")])
-        marks = {seat["mark"] for tree in trees.values() for widget in widgets_of(tree, "seating")
-                 for seat in widget["mySeats"]}
-        self.assertEqual(marks, set(T.MY_SEAT_MARKS))
-        # the plan of the guest: the own seats in two colours, no couple, no label
+        # the guest's plan: their own seats in two colours, no couple, no label
         plan = plus_one["scheme"]
         self.assertIsNone(plan["couple"])
         self.assertNotIn("couple", {seat["kind"] for seat in plan["seats"]})
@@ -307,7 +297,7 @@ class TreeTests(unittest.TestCase):
         self.assertEqual(plan["mine"], "Olga — blue, your guest — dark red")
         self.assertEqual([(item["name"], item["colour"]) for item in plus_one["names"]],
                          [("Olga", "1"), ("your guest", "2")])
-        # a guest of one seat: "You" by the seat
+        # a one-seat guest: "You" by the seat
         alone = widgets_of(trees["guest-alone"], "seating")[0]
         self.assertEqual((alone["scheme"]["single"], len(alone["scheme"]["labels"])), (True, 1))
         self.assertEqual([(item["name"], item["colour"]) for item in alone["names"]], [("Boris", "1")])
@@ -326,7 +316,7 @@ class TreeTests(unittest.TestCase):
                          ["4", "5"])
         flagged = [seat["number"] for seat in staff_plan["seats"] if seat["mark"] == "flagged"]
         self.assertEqual(flagged, ["1", "3", "7", "10", "14"])
-        # a badge sits 12 units off the centre of its seat along x and y
+        # a badge sits 12 units off its seat's centre along x and y
         per_seat = collections.Counter(
             seat["number"] for seat in staff_plan["seats"] for badge in staff_plan["badges"]
             if {abs(int(badge["cx"]) - int(seat["cx"])), abs(int(badge["cy"]) - int(seat["cy"]))}
@@ -340,13 +330,13 @@ class TreeTests(unittest.TestCase):
         self.assertTrue(widgets_of(trees["staff"], "seating")[0]["legend"])
         titles = [widget["title"] for widget in widgets_of(trees["staff"], "dishes")]
         self.assertEqual(titles, ["", "On request"])
-        # the title of a list is for both audiences
+        # a list title is for both audiences
         titles = [widget["title"] for widget in widgets_of(trees["guest-without-table"], "dishes")]
         self.assertEqual(titles, ["For the table"])
         self.assertTrue(widgets_of(trees["guest-plus-one"], "drinks")[0]["note"])
         self.assertTrue(widgets_of(trees["staff"], "drinks")[0]["note"])
         self.assertTrue(widgets_of(trees["staff"], "sets")[0]["note"])
-        # the parts of a section: headings with and without an eyebrow, the
+        # a section's parts: headings with and without an eyebrow, the
         # set cards under a heading a level lower, labelled by the heading
         headings = widgets_of(trees["guest-parts"], "heading")
         self.assertEqual([(item["title"], bool(item["eyebrow"])) for item in headings],
@@ -450,7 +440,7 @@ class FragmentFilesTests(unittest.TestCase):
 
     def test_the_only_links_lead_to_the_sections_of_the_page(self):
         # the pages lead nowhere else: the other addresses are the shared
-        # files in <head>; the line of the sections links the parts of the page
+        # files in <head>; the navigation bar links the page's parts
         sources = dict(self.sources, template=TEMPLATE.read_text(encoding="utf-8"))
         expected = {"template": ["{{faviconPath}}", "{{assetsPath}}/app.css", "{{assetsPath}}/app.js"],
                     "partials/section-nav": ["#{{.target}}"]}
@@ -463,7 +453,7 @@ class FragmentFilesTests(unittest.TestCase):
                                  if name == "partials/section-nav" else [])
                 addresses = re.findall(r'(?i)\b(?:href|src)\s*=\s*"([^"]*)"', markup)
                 self.assertEqual(addresses, expected.get(name, []))
-        # the template includes the line only when there is something to link
+        # the template includes the bar only when there is something to link
         self.assertIn("<!-- endif --><!-- if:nav --><!-- include:partials/section-nav --><!-- endif -->\n"
                       '<main class="page">', sources["template"])
 
@@ -487,7 +477,7 @@ class FragmentFilesTests(unittest.TestCase):
         for word in STAFF_WORDS + SCHEME_WORDS + ("Paired with", "—", "Dinner menu · ", 'aria-label="Sections"'):
             with self.subTest(word=word):
                 self.assertIn(word, markup)
-        # the words of the plan are in its partial: the tree holds none of them
+        # the plan's words are in its partial: the tree holds none of them
         scheme = re.sub(r"<!--.*?-->", "", self.sources["partials/scheme"], flags=re.S)
         for word in SCHEME_WORDS:
             with self.subTest(word=word):
@@ -509,7 +499,7 @@ class FragmentFilesTests(unittest.TestCase):
                 self.assertTrue(output.startswith('\n<svg class="scheme" viewBox="0 0 318 310"'))
                 self.assertTrue(output.endswith("</svg>\n"))
                 self.assertEqual(output.count("<svg"), 1)
-                # it reads the fields of the plan alone, of its own audience
+                # it reads only the plan's fields, those of its own audience
                 self.assertLessEqual(reads, scheme_fields)
                 self.assertEqual(reads & other, set())
             every |= reads
@@ -558,8 +548,8 @@ class ContractTests(unittest.TestCase):
                 self.assertTrue(reason)
 
     def test_each_page_reads_the_fields_of_its_audience_only(self):
-        # a staff field read on a guest's page would show the staff part as
-        # soon as the data layer filled it there by mistake, and the other way
+        # a staff field read on a guest page would show the staff part as
+        # soon as the data layer filled it there by mistake, and the other way round
         self.assertLessEqual(STAFF_ONLY | GUEST_ONLY, CONTRACT)
         self.assertEqual(STAFF_ONLY & GUEST_ONLY, frozenset())
         for name, reads in self.page_reads.items():
@@ -707,7 +697,7 @@ class PageTests(unittest.TestCase):
     def test_the_line_of_the_sections(self):
         page = self.pages["guest-parts"]
         line = element(page, "section-nav")
-        # the first element of the body of a guest page, right before main
+        # the first element in a guest page's body, right before main
         self.assertTrue(page[page.index("<body>"):].replace("<body>", "", 1).lstrip().startswith(line))
         self.assertTrue(page.index(line) < page.index('<main class="page">'))
         self.assertEqual(line,
@@ -729,14 +719,14 @@ class PageTests(unittest.TestCase):
         self.assertTrue(set(targets) <= set(ids))
         self.assertNotIn("s-signature", targets)
         self.assertIn("s-signature", ids)
-        # the hooks of the script are those of the markup
+        # the script's hooks are those in the markup
         self.assertEqual(section_nav_hooks(), ["data-section-nav", "data-section-nav-link",
                                                "data-section-nav-list"])
         for hook in section_nav_hooks():
             self.assertIn(f" {hook}>", line)
 
     def test_a_page_without_a_label_has_no_line(self):
-        # nothing of the line, not even an empty line of text
+        # nothing of the bar, not even an empty line of text
         for name, page in self.pages.items():
             if name == "guest-parts":
                 continue
@@ -846,8 +836,8 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(re.findall(r'<li class="pill[^"]*">([^<]*)</li>', cover), ["14 guests"])
 
     def test_the_seats_of_a_guest(self):
-        # a name per seat in the colour of the seat, in the order of the
-        # record; no number of a seat anywhere in the section
+        # a name per seat in the seat's colour, in record order; no seat
+        # number anywhere in the section
         cases = {"guest-plus-one": ("Olga", "your guest"),
                  "guest-alone": ("Boris",),
                  "guest-without-table": ("Klara",),
@@ -935,7 +925,7 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(re.findall(r"<p [^>]*>([^<]*)</p>", items[0]),
                          ["Beetroot tartare", "Beetroot, walnuts, rye crisp"])
         self.assertNotIn("dishes__title", section)
-        # the title of a list is not a staff part: a guest's list may have one
+        # a list title is not a staff part: a guest's list may have one
         titled = self.section("guest-without-table", "starters")
         self.assertRegex(titled, r'<div class="widget dishes-widget" id="s-starters--w1">\s*'
                                  r'<p class="dishes__title">For the table</p>\s*'
@@ -1018,10 +1008,10 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(re.findall(r"<(h\d) class=\"sets__title\" id=\"([^\"]+)\">", widget),
                          [("h4", "s-food--w5--set-a--title"), ("h4", "s-food--w5--set-b--title")])
         self.assertNotIn("<h3", widget)
-        # the tab list is named by the heading of the part
+        # the tab list is named by the part heading
         tablist = re.search(r"<div [^>]*data-tabs-tablist[^>]*>", widget).group(0)
         self.assertIn(' role="tablist" aria-labelledby="s-food--w4--title"', tablist)
-        # outside a part a card has the h3 it always had
+        # outside a part a card has its usual h3
         for name in ("guest-plus-one", "guest-without-table", "guest-pair", "staff"):
             with self.subTest(page=name):
                 self.assertNotIn('<h4 class="sets__title"', self.pages[name])
@@ -1032,7 +1022,7 @@ class WidgetTests(unittest.TestCase):
         main["widgets"] = [T.heading("main", 1, "Main course", "Two sets · guests choose at the table"),
                            T.widget("sets", "main", 2, labelled_by="s-main--w1--title",
                                     items=T.sets("s-main--w2", T.SETS, True, nested=True),
-                                    note="", count=2, multiple=True)]
+                                    note="", multiple=True)]
         page = render_strict(tree, self.template)
         self.assertEqual(html_problems(page), [])
         staff = element(page, "sets-widget")
@@ -1129,7 +1119,7 @@ class WidgetTests(unittest.TestCase):
         self.assertIn('<h2 class="section__title" id="s-seats--title">Your seats</h2>', seats)
 
 
-# --- the trees of the data layer ---------------------------------------------------
+# --- the data layer's trees --------------------------------------------------------
 
 def strings(value) -> list[str]:
     """Every string of a tree, at any depth."""
@@ -1141,8 +1131,8 @@ def strings(value) -> list[str]:
 
 
 def staff_strings(tree: dict) -> set[str]:
-    """The texts that the fields for the staff only hold in a staff tree; of a
-    drink on the staff list only its line (its name and category are shared)."""
+    """The texts that the staff-only fields hold in a staff tree; for a drink
+    on the staff list, only its line (its name and category are shared)."""
     found = set()
     for kind, value in T.nodes(tree):
         for field, item in value.items():
@@ -1199,7 +1189,7 @@ class DataLayerPageTests(unittest.TestCase):
                 seen.add(kind)
                 with self.subTest(page=label, node=kind):
                     self.assertEqual(set(value), set(T.NODES[kind]))
-        # the data sets reach every kind of node, the scheme of the table too
+        # the data sets reach every node kind, the table scheme too
         self.assertEqual(seen, set(T.NODES))
 
     def test_every_field_of_the_contract_is_read_or_listed(self):
@@ -1221,8 +1211,8 @@ class DataLayerPageTests(unittest.TestCase):
             classes = {value for found in re.findall(r'class="([^"]*)"', document)
                        for value in found.split()}
             own = strings(tree)
-            # a text of the staff tree that the guest's own tree also holds
-            # (the guest's name, a word of an ingredient) is no leak
+            # a staff tree text that the guest's own tree also holds (the
+            # guest's name, a word from an ingredient) is no leak
             hidden = {item for item in staff_strings(self.staff[label.split(":")[0]])
                       if not any(item in mine for mine in own)}
             with self.subTest(page=label):
@@ -1234,10 +1224,10 @@ class DataLayerPageTests(unittest.TestCase):
                          if re.search(r"(?<!\w)%s(?!\w)" % re.escape(item), text)]
                 self.assertEqual(leaks, [])
 
-    # --- the plan of the table on the pages of the data sets ---
+    # --- the table plan on the data set pages ---
 
     def plan_pages(self, name: str) -> list[tuple[str, dict, dict, str]]:
-        """(label, tree, plan, drawing) of every page of a data set with a plan."""
+        """(label, tree, plan, drawing) of every page in a data set with a plan."""
         found = []
         for label, tree, document, _reads in self.pages:
             if label.startswith(f"{name}: "):
@@ -1246,18 +1236,18 @@ class DataLayerPageTests(unittest.TestCase):
                     found.append((label, tree, plan, element(document, "scheme")))
         return found
 
-    def guest_plan(self, name: str, seats: list[tuple[int, str]]) -> tuple[dict, str]:
-        """The plan and the drawing of the guest whose own seats are `seats`."""
+    def guest_plan(self, name: str, seats: list[int]) -> tuple[dict, str]:
+        """The plan and the drawing of the guest whose own seats are `seats`
+        (in ascending order)."""
         found = [(plan, drawing) for label, tree, plan, drawing in self.plan_pages(name)
                  if not tree["isStaff"]
-                 and [(seat["number"], seat["mark"])
-                      for seat in widgets_of(tree, "seating")[0]["mySeats"]] == seats]
+                 and [int(seat["number"]) for seat in plan["seats"] if seat["kind"] == "you"] == seats]
         self.assertEqual(len(found), 1, seats)
         return found[0]
 
     @staticmethod
     def nearest_seat(plan: dict, x: str, y: str) -> str:
-        """The number of the seat whose centre is the nearest to the point."""
+        """The number of the seat whose centre is nearest to the point."""
         return min(plan["seats"], key=lambda seat: (float(seat["cx"]) - float(x)) ** 2
                    + (float(seat["cy"]) - float(y)) ** 2)["number"]
 
@@ -1269,7 +1259,7 @@ class DataLayerPageTests(unittest.TestCase):
                                                   if label.startswith(f"{name}: ")]))
                 for label, tree, plan, drawing in pages:
                     if tree["isStaff"]:
-                        # the couple label is the text of the tree, escaped
+                        # the couple label is the tree's text, escaped
                         self.assertIn(f'<text class="scheme__couple" x="{plan["couple"]["x"]}" '
                                       f'y="{plan["couple"]["y"]}">'
                                       f'{core.text_to_html(plan["couple"]["text"])}</text>', drawing)
@@ -1282,14 +1272,14 @@ class DataLayerPageTests(unittest.TestCase):
                     self.assertNotIn("<svg", document)
 
     def own_colours(self, plan: dict, drawing: str) -> dict[str, str]:
-        """The number of each own seat of the drawing -> its colour modifier."""
+        """The number of each own seat in the drawing -> its colour modifier."""
         found = re.findall(r'<g class="seat seat--you seat--none seat--colour-(\d)">'
                            r'<circle class="seat__ring" cx="([\d.-]+)" cy="([\d.-]+)"', drawing)
         return {self.nearest_seat(plan, x, y): colour for colour, x, y in found}
 
     def test_a_guest_with_a_companion_at_the_other_end_of_the_table(self):
         # the guest at seat 19 in the first colour, the +1 at seat 1 in the second
-        plan, drawing = self.guest_plan("reserved19", [(1, "plusOne"), (19, "you")])
+        plan, drawing = self.guest_plan("reserved19", [1, 19])
         self.assertEqual(self.own_colours(plan, drawing), {"19": "1", "1": "2"})
         self.assertNotIn("seat-label", drawing)
         self.assertNotIn("seat__number", drawing)
@@ -1297,14 +1287,14 @@ class DataLayerPageTests(unittest.TestCase):
                       'Greta — blue, Hugo — dark red"', drawing)
 
     def test_a_record_for_two_has_two_own_seats_in_two_colours_and_no_label(self):
-        plan, drawing = self.guest_plan("reserved19", [(2, "you"), (3, "none")])
+        plan, drawing = self.guest_plan("reserved19", [2, 3])
         self.assertEqual(self.own_colours(plan, drawing), {"2": "1", "3": "2"})
         self.assertEqual(drawing.count('class="seat__ring"'), 2)
         self.assertNotIn("seat-label", drawing)
         self.assertIn("Your seats: Peggy — blue, Victor — dark red", drawing)
 
     def test_a_guest_of_one_seat_has_the_label_you(self):
-        plan, drawing = self.guest_plan("reserved19", [(4, "you")])
+        plan, drawing = self.guest_plan("reserved19", [4])
         self.assertEqual(self.own_colours(plan, drawing), {"4": "1"})
         [(x, y, text)] = re.findall(r'<text class="seat-label[^"]*" x="([\d.-]+)" '
                                     r'y="([\d.-]+)">([^<]*)</text>', drawing)

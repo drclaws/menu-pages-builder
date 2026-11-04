@@ -1,11 +1,11 @@
-"""Messages of the checks of a JSON document.
+"""Field checks of a JSON document and their messages.
 
-`_Checker` reports the problems of the fields of one document to a report
+`_Checker` reports problems with the fields of one document to a report
 object with the methods `error(text)` and `warning(text)` (`warn` is accepted
 as well).  Messages have the form `<where>: field '<path>' <problem>` and
-never quote the data.  With a set of known keys a key or an id is shown only
-when it is one of them: such a key may be somebody's name, so every other key
-is replaced by a neutral label.  `MISSING` is what the methods return for a
+never quote the data.  Given a set of known keys, a key or an id is shown
+only when it is one of them: any other key may be somebody's name, so it is
+replaced by a neutral label.  `MISSING` is what the methods return for a
 field without a usable value.
 
 Standard library only; no input/output.
@@ -43,7 +43,7 @@ MISSING: Any = _Missing()
 
 
 def report_warning(report: Any) -> Callable[[str], None]:
-    """The warning method of a report: `warning`, else `warn`."""
+    """A report's warning method: `warning`, else `warn`."""
     method = getattr(report, "warning", None)
     return method if callable(method) else report.warn
 
@@ -56,8 +56,8 @@ def report_warning(report: Any) -> Callable[[str], None]:
 class _Checker:
     """Messages about one document or one record of it.
 
-    `known` switches on the strict mode of `format_path`: only these keys
-    are shown.  `errors` counts the errors reported through the checker.
+    `known` switches `format_path` to strict mode: only these keys are
+    shown.  `errors` counts the errors reported through the checker.
     """
 
     def __init__(self, report: Any, where: str, known: Collection[str] | None = None):

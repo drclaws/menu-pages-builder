@@ -1,8 +1,8 @@
 """Tests of the table plan geometry (`menu_tools._table`), standard library only.
 
-The fixtures are fictional.  The L-shaped table is the one of the design
-mockup; its seat centres with the per-side shifts are the centres of the
-mockup to the pixel.
+The fixtures are fictional.  The L-shaped table is the one from the design
+mockup; its seat centres with the per-side shifts match the mockup's
+centres to the pixel.
 """
 
 import ast
@@ -45,7 +45,7 @@ COUPLE_TEXT = "IVAN · VERA"
 
 
 def l_table() -> dict:
-    """The L-shaped table of the mockup on 16 seats, automatic layout."""
+    """The mockup's L-shaped table of 16 seats, automatic layout."""
     return {
         "label": "L-shaped table",
         "arms": [
@@ -72,7 +72,7 @@ def l_table_shifted() -> dict:
 
 
 def straight_table() -> dict:
-    """A straight table on 12 seats: 5 + 5 on the long sides, one at each end."""
+    """A straight table of 12 seats: 5 + 5 on the long sides, one at each end."""
     return {
         "label": "Straight table",
         "arms": [{"id": "main", "x": 54, "y": 129, "width": 210, "height": 52}],
@@ -86,7 +86,7 @@ def straight_table() -> dict:
 
 
 def u_table() -> dict:
-    """A U-shaped table on 20 seats, open to the top."""
+    """A U-shaped table of 20 seats, open to the top."""
     return {
         "label": "U-shaped table",
         "arms": [
@@ -108,7 +108,7 @@ def u_table() -> dict:
 
 
 def two_tables() -> dict:
-    """Two separate tables on 8 seats each, numbered through."""
+    """Two separate tables of 8 seats each, numbered consecutively."""
     seats = []
     for arm in ("first", "second"):
         seats += [
@@ -142,7 +142,7 @@ FIXTURES = {
     "two": (two_tables, couple((3, 7)), [12, 13], {1: ["A"], 5: ["N", "G"], 14: ["V"]}),
 }
 
-#: Seat centres of the mockup (px).
+#: The mockup's seat centres (px).
 MOCKUP_CENTRES = {
     1: (18, 86), 2: (66, 38), 3: (108, 38), 4: (150, 38), 5: (192, 38), 6: (234, 38),
     7: (262, 100), 8: (262, 142), 9: (262, 184), 10: (262, 226), 11: (214, 282),
@@ -357,7 +357,7 @@ class LayoutTest(unittest.TestCase):
 
 
 def thin_l_table(aligned: bool = True) -> dict:
-    """An L-shaped table of arms 44 px thick on 19 seats.  Aligned: seat 8
+    """An L-shaped table of 19 seats with arms 44 px thick.  Aligned: seat 8
     faces seat 1 across the table, seat 7 sits over seat 12 at the end of the
     short arm, seats 13 and 14 inside the short arm face seats 11 and 10."""
     seats = [
@@ -475,7 +475,7 @@ class AlignTest(unittest.TestCase):
         self.assertEqual(found[13][1], found[11][1])
         self.assertEqual(found[14][1], found[10][1])
         self.assertEqual(found[7][0], found[12][0])
-        # seat 12 in the middle of the end of the short arm: (235 + 279) / 2
+        # seat 12 in the middle of the short arm's end: (235 + 279) / 2
         self.assertEqual(found[12], ("257", "232"))
 
     def test_layout_of_the_aligned_table(self):
@@ -619,7 +619,7 @@ class OutlineTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# The label "You" and the colours of the seats of a guest
+# The label "You" and the colours of a guest's seats
 # --------------------------------------------------------------------------
 
 
@@ -653,7 +653,7 @@ class LabelTest(unittest.TestCase):
         self.assertEqual(label_spots(guest(l_table(), [14])), [("166", "134", "start")])
 
     def test_every_seat_of_the_l_table_has_room_for_you(self):
-        # the seats of the couple of the staff plan too: the guest plan has no couple
+        # the couple's seats on the staff plan too: the guest plan has no couple
         for make in (l_table, l_table_shifted):
             for number in range(1, 17):
                 with self.subTest(table=make.__name__, seat=number):
@@ -699,8 +699,8 @@ class ColourTest(unittest.TestCase):
 
     def test_the_guest_plan_has_no_couple(self):
         # the couple sits at seats 4 and 5 of the staff plan: plain seats for
-        # a guest, no couple label; a seat of the couple in a record (refused
-        # by the checks of the data) would take the colour of the guest
+        # a guest, no couple label; a couple seat in a record (refused by the
+        # data checks) would take the guest's colour
         staff_object = staff(l_table(), {})
         self.assertEqual([seat["number"] for seat in staff_object["seats"] if seat["kind"] == "couple"], ["4", "5"])
         self.assertIsNotNone(staff_object["couple"])
@@ -834,10 +834,10 @@ class CoupleTest(unittest.TestCase):
                     self.assertEqual(check.errors, messages)
 
     def test_couple_label_on_the_only_spot_of_a_you_label(self):
-        # a squeezed row at the top of the field: the only room for the label
-        # of a middle seat is on the arm, where the couple label is; the two
-        # never meet: the couple is on the staff plan alone, "You" on the
-        # plan of a guest alone
+        # a squeezed row at the top of the field: the only room for a middle
+        # seat's label is on the arm, where the couple label is; the two
+        # never meet: the couple is on the staff plan alone, "You" on a
+        # guest's plan alone
         self.assertEqual(check_table(row_table()).errors, [])
         self.assertEqual(label_spots(guest(row_table(), [3])), [("124.5", "62", "middle")])
         self.assertEqual(staff(row_table(), {}, pair=couple((4,)))["couple"],
@@ -861,12 +861,12 @@ class CoupleTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# The size of the field
+# The field size
 # --------------------------------------------------------------------------
 
 
 def wide_l_table() -> dict:
-    """An L-shaped table on 18 seats in a field of 360 x 310: one seat at the
+    """An L-shaped table of 18 seats in a field of 360 x 310: one seat at the
     end of the long arm, 7 over it and 6 under it, lined up with the seats
     over it; 3 seats on the right of the short arm, the first one facing
     the seat at the end of the long arm, and one on its left facing the last
@@ -965,7 +965,7 @@ class FieldTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# The check of a table description: every rule
+# The table description check: every rule
 # --------------------------------------------------------------------------
 
 
@@ -1049,9 +1049,9 @@ RULE_CASES = [
 
 WARNING_RULES = {9}
 
-#: (rule, table, patched constants, messages): with the real constants the
-#: label of a seat can always go onto its own arm, so the rule is reached
-#: only with a wider keep-out around the other seats.
+#: (rule, table, patched constants, messages): with the real constants a
+#: seat's label can always go onto its own arm, so the rule is reached only
+#: with a wider keep-out around the other seats.
 PATCHED_RULE_CASES = [
     (14, l_table, {"SEAT_KEEP_OUT": 40}, [
         "table.seats[1] (seat 3): no room for the 'You' label",
@@ -1192,7 +1192,7 @@ NUMBER_RE = re.compile(r"-?\d+(\.(5|25|75))?")
 
 
 def walk(value):
-    """(key, value) of every field of the nested dicts and lists."""
+    """(key, value) of every field in the nested dicts and lists."""
     if isinstance(value, dict):
         for key, item in value.items():
             yield key, item

@@ -1,27 +1,29 @@
-"""Checks of the finished output of the menu builder.
+"""Checks of the menu builder's finished output.
 
-The output is checked by `check_output` of the engine first: the top of the
-output holds a directory `<token>/` with `index.html` for every page and
-`assets/`, and nothing else.  Every local address of a page, a link as well
-as a resource, has to lie under the base path and name a file of the
-output: a page that leads to another part of the site is an error.
+`check_output` (from `_engine`) runs first: the top level of the output
+holds a `<token>/` directory with `index.html` for every page, `assets/`,
+and nothing else.  Every local address on a page, link or resource, must
+lie under the base path and name a file in the output: a page that leads
+elsewhere on the site is an error.
 
-On top of that, `assets/` holds `app.css`, `app.js` and `favicon.svg` and
-nothing else (any other file of the code that would be published, a font or
-a note, is a problem), no element of a page may carry a `style` attribute,
-inside an inline SVG as well: the styles of the pages live in
-`assets/app.css` alone (`check_output` looks at the URLs of a `style`
-attribute, not at the attribute itself), a page links only to its own
-parts: every `<a>` and `<area>` has an `href` of the form `#<id>`, the id of
-an element of the same page (`check_output` lets a fragment pass without
-looking at its target, and a link to another page of the output would
-resolve), and no file holds the token of a record, in any letter case, its
-own page included: a token is only the name of the directory of its page.
+This module adds four rules:
 
-Every problem is reported in one `OutputError`, at most
-`MAX_REPORTED_PROBLEMS` lines, as `check_output` reports them.  The messages
-never quote the text of a page nor a token, and the directories of the pages
-are shown as `…`: they are named after the tokens.
+- `assets/` holds `app.css`, `app.js` and `favicon.svg` and nothing else
+  (any other published file from the code, a font or a note, is a problem);
+- no element carries a `style` attribute, inside an inline SVG too: the
+  styles live in `assets/app.css` alone (`check_output` looks at the URLs
+  in a `style` attribute, not at the attribute itself);
+- a page links only to its own parts: every `<a>` and `<area>` has an
+  `href` of the form `#<id>` naming an element on the same page
+  (`check_output` lets a fragment pass without looking at its target, and a
+  link to another page in the output would resolve);
+- no file holds a record's token, in any letter case, its own page
+  included: a token is only the name of its page's directory.
+
+All problems are reported in one `OutputError`, at most
+`MAX_REPORTED_PROBLEMS` lines, the way `check_output` reports them.  The
+messages never quote page text or a token, and page directories are shown
+as `…`, since they are named after the tokens.
 """
 
 from __future__ import annotations
@@ -37,16 +39,16 @@ from menu_tools._schema import guest_where
 
 #: The directory of the files the pages share, at the top of the output.
 ASSETS_DIR = "assets"
-#: Everything `assets/` of the output holds.
+#: Everything the output's `assets/` holds.
 ASSET_FILES = ("app.css", "app.js", "favicon.svg")
 
 STYLE_PROBLEM = "the attribute 'style' is not allowed (the styles live in assets/app.css)"
 ASSETS_RULE = f"only {', '.join(ASSET_FILES[:-1])} and {ASSET_FILES[-1]} are published in {ASSETS_DIR}/"
-TOKEN_RULE = "a token is only the name of the directory of its page"
+TOKEN_RULE = "a token is only the name of its page directory"
 #: The elements whose `href` is a link a reader follows.
 LINK_TAGS = ("a", "area")
 #: A link with no `href`, or one that is not a fragment of the page.
-LINK_RULE = "must lead to a part of the same page ('#' and the id of an element of the page)"
+LINK_RULE = "must lead to a part of the same page ('#' and the id of an element on it)"
 #: A fragment that is empty or names no id of the page.
 LINK_TARGET_PROBLEM = "names no element of the page"
 
@@ -62,14 +64,14 @@ class _StyleFinder(HTMLParser):
         self.lines: list[int] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        # the parser gives the names of the attributes in lower case
+        # the parser gives attribute names in lower case
         if any(name == "style" for name, _value in attrs):
             self.lines.append(self.getpos()[0])
 
 
 def style_lines(document: str) -> list[int]:
-    """The lines of the elements of an HTML document that have a `style`
-    attribute (of any element, the elements of an inline SVG included)."""
+    """The lines of the elements in an HTML document that have a `style`
+    attribute (any element, inline SVG elements included)."""
     finder = _StyleFinder()
     finder.feed(document)
     finder.close()
@@ -86,7 +88,7 @@ class _LinkFinder(HTMLParser):
         self.links: list[tuple[int, str, str | None]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        # a browser takes the first of two attributes of the same name
+        # a browser uses the first of two attributes with the same name
         first: dict[str, str] = {}
         for name, value in attrs:
             first.setdefault(name, value or "")
@@ -97,10 +99,10 @@ class _LinkFinder(HTMLParser):
 
 
 def link_lines(document: str) -> list[tuple[int, str]]:
-    """(line, problem) of every link of an HTML document that does not lead
+    """(line, problem) of every link in an HTML document that does not lead
     to an element of the document itself: an `<a>` or `<area>` without an
     `href` or with one that is not `#<id>` (`<a href> must lead to ...`), or
-    with a fragment that is empty or names no id of the document
+    with a fragment that is empty or names no id in the document
     (`<a href> names no element of the page`).  An id may stand anywhere in
     the document, before or after the link."""
     finder = _LinkFinder()
@@ -116,8 +118,8 @@ def link_lines(document: str) -> list[tuple[int, str]]:
 
 
 def shown_path(relative: str) -> str:
-    """A path inside the output for a message: the directory of a page (any
-    entry at the top but `assets` without a dot in its name) is `…`."""
+    """A path inside the output, for a message: a page directory (any
+    top-level entry without a dot in its name, except `assets`) is `…`."""
     top, separator, rest = relative.partition("/")
     if top != ASSETS_DIR and "." not in top:
         top = _core.NAME_MASK
@@ -151,8 +153,8 @@ def _files(root: Path, suffix: str = "") -> list[str]:
 
 
 def style_problems(out_dir: Path | str) -> list[str]:
-    """The `style` attributes of the HTML files of an output directory, one
-    line per file, or one line for every file at once:
+    """The `style` attributes in an output directory's HTML files: one line
+    for a single file, or one line for all of them at once:
     `3 files: <problem>; first: …/index.html line 12`."""
     root = Path(out_dir)
     places: list[tuple[str, int]] = []
@@ -176,11 +178,11 @@ def style_problems(out_dir: Path | str) -> list[str]:
 
 
 def link_problems(out_dir: Path | str) -> list[str]:
-    """The links of the HTML files of an output directory that do not lead
-    to a part of their own page (`link_lines`), a line per problem and file
-    (its first place there), or one line for every file with the same
+    """The links in an output directory's HTML files that do not lead to a
+    part of their own page (`link_lines`): a line per problem and file (its
+    first place there), or one line for all the files with the same
     problem: `3 files: <problem>; first: …/index.html line 12`.  Neither the
-    address nor the text of a page is shown."""
+    address nor the page text is shown."""
     root = Path(out_dir)
     places: dict[str, list[tuple[str, int]]] = {}
     for relative in _files(root, ".html"):
@@ -206,9 +208,9 @@ def link_problems(out_dir: Path | str) -> list[str]:
 
 
 def asset_problems(out_dir: Path | str) -> list[str]:
-    """What `assets/` of an output directory holds besides `ASSET_FILES`,
-    a line per entry at its top (a directory with a trailing '/').  The
-    names are shown: they are the names of files of the code."""
+    """What an output directory's `assets/` holds besides `ASSET_FILES`, a
+    line per top-level entry (a directory with a trailing '/').  The names
+    are shown: they are names of files in the code."""
     root = Path(out_dir) / ASSETS_DIR
     try:
         with os.scandir(root) as iterator:
@@ -231,16 +233,15 @@ def asset_problems(out_dir: Path | str) -> list[str]:
 def token_problems(
     out_dir: Path | str, pages: Iterable[str], numbers: Mapping[str, int] | None = None
 ) -> list[str]:
-    """The files of an output directory that hold the token of a page (any
-    letter case), a line per record that names it by its number and never
-    shows the token:
+    """The files in an output directory that hold a page's token (in any
+    letter case): a line per record, naming the record by its number and
+    never showing the token:
     `guests.json: guest #2: its token is in …/index.html; <rule>` or
     `guests.json: guest #2: its token is in 3 files of the output, first: assets/app.css; <rule>`.
 
-    `numbers` gives the number of the record of each token in `guests.json`;
-    without it a record is numbered by the position of its token in `pages`,
-    from 1.  The names of the directories are not looked at: they are the
-    tokens.
+    `numbers` maps each token to its record's number in `guests.json`;
+    without it a record is numbered by its token's position in `pages`,
+    from 1.  Directory names are not checked: they are the tokens.
     """
     root = Path(out_dir)
     tokens = list(pages)
@@ -277,14 +278,13 @@ def _limited(problems: list[str], hidden: int) -> list[str]:
 def check_menu_output(
     out_dir: Path | str, pages: Iterable[str], *, base_path: str, numbers: Mapping[str, int] | None = None
 ) -> "_core.OutputStats":
-    """Check a finished output directory of the menu published under
-    `base_path`; `pages` are the tokens of every page (the guests and the
-    staff), `numbers` the numbers of their records in `guests.json` for the
-    messages (see `token_problems`).
+    """Check a finished menu output directory published under `base_path`;
+    `pages` are the tokens of every page (guests and staff), `numbers` their
+    record numbers in `guests.json` for the messages (see `token_problems`).
 
-    `check_output` of the engine, then the files of `assets/`, the `style`
-    attributes and the links of the pages and the tokens in the files;
-    every problem together raises one `OutputError`.
+    `check_output` first, then the files in `assets/`, the `style`
+    attributes, the links on the pages and the tokens in the files; all
+    problems together raise one `OutputError`.
     """
     pages = list(pages)
     problems: list[str] = []

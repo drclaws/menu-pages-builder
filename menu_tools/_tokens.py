@@ -1,10 +1,10 @@
-"""Read the design tokens (CSS custom properties on `:root`) of `app.css`.
+"""Read the design tokens (CSS custom properties on `:root`) in `app.css`.
 
 Only what the icon and the build need is supported: the top-level `:root`
 rules, `var(--name)` references and the colour notations `#rgb`, `#rgba`,
 `#rrggbb`, `#rrggbbaa`, `rgb()` and `rgba()`.  Anything else is reported with
-the name of the token, so that a change of the tokens that the build does
-not understand fails the build instead of producing wrong colours.
+the token name, so a token change the build does not understand fails the
+build instead of producing wrong colours.
 
 Standard library only.
 """
@@ -19,8 +19,8 @@ RGB = Tuple[int, int, int]
 RGBA = Tuple[int, int, int, float]
 
 #: Colour roles of the design (the icon takes `accent` and `on_accent`, the
-#: colour of the browser interface - the `theme-color` of the pages -
-#: `surface`): attribute -> token name.
+#: browser interface colour - the pages' `theme-color` - takes `surface`):
+#: attribute -> token name.
 PALETTE_TOKENS: Dict[str, str] = {
     "bg": "--color-bg",
     "surface": "--color-surface",
@@ -90,8 +90,8 @@ def parse_tokens(css: str) -> Dict[str, str]:
     """`--name` -> raw value for the top-level `:root` rules of a style sheet.
 
     Rules nested in `@media` and other blocks are ignored: the icon and the
-    colour of the browser interface are made from the base values.  When a
-    token is declared twice the last one wins.
+    browser interface colour use the base values.  When a token is declared
+    twice the last one wins.
     """
     text = _COMMENT_RE.sub(" ", css)
     tokens: Dict[str, str] = {}

@@ -1,13 +1,11 @@
 """Privacy of the finished pages, read file by file after a build.
 
-* no token of a record, the staff record included, is in any file of the
-  output, its own page included: a token is only the name of the directory
-  of its page;
+* no record's token, the staff record included, is in any output file, its
+  own page included: a token is only the name of its page directory;
 * `{token}` is left nowhere;
-* the name of a record (and of each of its seats) is on its own page and on
+* a record's name (and each of its seats' names) is on its own page and on
   the staff page alone;
-* the labels of the dietary notes and of the allergens are on the staff page
-  alone.
+* the dietary note and allergen labels are on the staff page alone.
 """
 
 import json
@@ -31,8 +29,8 @@ def data_sets() -> dict[str, tuple[dict, list]]:
 
 
 def record_names(guests: list) -> dict[str, set[int]]:
-    """Name -> the numbers of the records that hold it (the name of the record
-    or of one of its seats)."""
+    """Name -> the numbers of the records that hold it (as the record's name
+    or a seat's name)."""
     names: dict[str, set[int]] = {}
     for number, record in enumerate(guests, start=1):
         found = {record.get("name")} | {seat.get("name") for seat in record.get("seats", [])}
@@ -42,7 +40,7 @@ def record_names(guests: list) -> dict[str, set[int]]:
 
 
 def labels(menu: dict) -> set[str]:
-    """The labels and tags of the dietary notes and the labels of the allergens."""
+    """The dietary note labels and tags and the allergen labels."""
     found = set()
     for requirement in (menu.get("requirements") or {}).values():
         found |= {requirement["label"], requirement.get("tag", "")}

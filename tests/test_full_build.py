@@ -1,5 +1,5 @@
-"""Tests of `build.py build` on the fixtures: the output, its checks, the
-handling of `--out` and what the command prints."""
+"""Tests of `build.py build` on the fixtures: the output, its checks, how
+`--out` is handled and what the command prints."""
 
 import re
 import shutil
@@ -14,7 +14,7 @@ from menu_tools import _core  # noqa: E402
 
 ROOT = support.ROOT
 
-#: The only forms of a line of stderr that names a record.
+#: The only forms of a stderr line that names a record.
 RECORD_LINE = re.compile(r"(?:warning|error): guests\.json: guest #\d+: \S.*")
 TEMPLATE_SUMMARY_LINE = re.compile(r"error: \d+ guest record\(s\): \S.*; first: guests\.json: guest #\d+")
 OK_LINE = re.compile(r"build: OK -> \S+ \((\d+) page\(s\), (\d+) file\(s\) in total, \d+(?:\.\d)? (?:B|KiB|MiB)\)")
@@ -41,7 +41,7 @@ class BuildTestCase(support.TempDirTestCase):
         return support.run_main("build", "--data", data, "--out", out, *extra)
 
     def assert_quiet_about(self, result, menu: dict, guests: list) -> None:
-        """No token, name or traceback in what the command printed, and every
+        """No token, name or traceback in what the command prints, and every
         line that names a record has the form of a record label."""
         text = result.stdout + result.stderr
         self.assertNoPrivateData(text, fixtures.tokens(guests), fixtures.names(guests, menu))
@@ -265,7 +265,7 @@ class FailingBuildTest(BuildTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout.splitlines(), ["build: 12 guest record(s) + staff validated "
                                                       f"(data: {_core.display_path(self.data)})"])
-        # the first page in the order of the names of the directories
+        # the first page in directory name order
         first = sorted(fixtures.tokens(self.guests))[0]
         page = (self.out / first / "index.html").read_text(encoding="utf-8")
         line = page[: page.index("<main ")].count("\n") + 1
@@ -334,8 +334,8 @@ class FailingBuildTest(BuildTestCase):
     def test_a_link_outside_the_output_fails(self):
         # a page that leads to another part of the site, rendered by a broken
         # template: under the base path /menu the address lies outside the
-        # output, at the top of the site it names no file of the output; it
-        # is no part of the page either
+        # output, at the top of the site it names no output file; it is not
+        # part of the page either
         for base, words in (("/menu", "points outside the output"), ("/", "does not exist in the output")):
             with self.subTest(base=base):
                 with self.with_link('<a href="/other/x/">Other</a>'):
@@ -345,7 +345,7 @@ class FailingBuildTest(BuildTestCase):
                 self.assertEqual(len(lines), 3, lines)
                 self.assertRegex(lines[0], rf"^error: 13 files: <a href>: '/…' {words}; first: …/index\.html line \d+$")
                 self.assertRegex(lines[1], r"^error: 13 files: <a href> must lead to a part of the same page "
-                                           r"\('#' and the id of an element of the page\); first: …/index\.html "
+                                           r"\('#' and the id of an element on it\); first: …/index\.html "
                                            r"line \d+$")
                 self.assertEqual(lines[2], "build: failed with 2 error(s)")
                 self.assert_quiet_about(result, self.menu, self.guests)
@@ -370,19 +370,19 @@ class FailingBuildTest(BuildTestCase):
                 self.assert_kept()
 
     def test_a_link_to_a_part_of_the_page_passes(self):
-        # the cover of every page has the id of its section
+        # every page's cover has its section id
         with self.with_link('<a href="#s-cover">Top</a>'):
             result = self.build(self.data, self.tmp / "with-a-link", "--base-path", "/menu")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, "")
 
     def test_a_token_written_into_the_data_fails(self):
-        # a token typed into a text by mistake reads as a word to the checks
-        # of the data; the check of the output finds it in any letter case
+        # a token typed into a text by mistake reads as a word to the data
+        # checks; the output check finds it in any letter case
         tokens = [record["token"] for record in self.guests]
 
         def shared_text(menu, guests):
-            # the card of the main course, on every guest page but the one that hides it
+            # the main course card, on every guest page but the one that hides it
             menu["sections"][3]["widgets"][1]["text"] += f" Ask for {tokens[1]}."
 
         def note_to_a_guest(menu, guests):
@@ -409,8 +409,8 @@ class FailingBuildTest(BuildTestCase):
                     self.assertEqual(result.returncode, 1)
                     self.assertEqual(result.stdout.splitlines(), [
                         f"build: 12 guest record(s) + staff validated (data: {_core.display_path(data)})"])
-                    self.assertEqual(result.stderr, f"error: {problem}; a token is only the name of the "
-                                                    "directory of its page\nbuild: failed with 1 error(s)\n")
+                    self.assertEqual(result.stderr, f"error: {problem}; a token is only the name of its "
+                                                    "page directory\nbuild: failed with 1 error(s)\n")
                     self.assert_quiet_about(result, menu, guests)
                 self.assertFalse(fresh.exists())
                 self.assertEqual(self.leftovers(fresh), [])
@@ -440,7 +440,7 @@ class FailingBuildTest(BuildTestCase):
             result = self.build(self.data, self.out)
         self.assertEqual(
             result.stderr,
-            "error: assets/Favicon.svg of the code collides with the icon that the build generates from "
+            "error: assets/Favicon.svg in the code collides with the icon that the build generates from "
             "the design tokens; remove it\nbuild: failed\n",
         )
         self.assert_kept()
@@ -468,8 +468,8 @@ class FailingBuildTest(BuildTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(
             result.stderr,
-            "error: assets/app.css: design token '--color-surface' is not defined on :root (the colour of "
-            "the browser interface and the icon are taken from the design tokens)\nbuild: failed\n",
+            "error: assets/app.css: design token '--color-surface' is not defined on :root (the browser "
+            "interface colour and the icon come from the design tokens)\nbuild: failed\n",
         )
         self.assert_kept()
 

@@ -1,4 +1,4 @@
-<!-- A dish as an item of a list; expects in `.`: a dish - name, ingredients, allergens[], tags, noRestrictions, swapLines[], note; in the page root: isStaff. The guest sees the name and the ingredients. The staff page shows the name, the pills, the lines on swaps (who gets what instead) and the note of the kitchen. -->
+<!-- A dish as a list item; expects in `.`: a dish - name, ingredients, allergens[], tags, noRestrictions, swapLines[], note; in the page root: isStaff. The guest sees the name and the ingredients. The staff page shows the name, the pills, the swap lines (who gets what instead) and the kitchen's note. -->
 <li class="dish">
   <p class="dish__name">{{.name}}</p><!-- if:!isStaff --><!-- if:.ingredients -->
   <p class="dish__ingredients">{{.ingredients}}</p><!-- endif --><!-- endif --><!-- if:isStaff -->

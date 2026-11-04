@@ -1,11 +1,11 @@
 """The words the build joins with seat numbers, names and counts.
 
-A page fragment holds every fixed text of the interface ("Staff version",
-"No.", "Paired with", "You", "+1", "[name]" and so on).  The texts here are
-the ones the build has to put together with numbers or names before they
-reach a fragment: "Seats 8 & 9", "Olga — blue, your guest — dark red", "If
-chosen by seat 3 (no nuts) - ...", "14 guests".  One place for all of them,
-so that the wording of the menu is easy to change.
+The page fragments hold every fixed interface text ("Staff version", "No.",
+"Paired with", "You", "+1", "[name]" and so on).  The texts here are the
+ones the build combines with numbers or names before they reach a
+fragment: "Seats 8 & 9", "Olga — blue, your guest — dark red", "If chosen
+by seat 3 (no nuts) - ...", "14 guests".  Keeping them in one place makes
+the menu's wording easy to change.
 
 Seat numbers are always listed in ascending order.  Standard library only.
 """
@@ -20,7 +20,7 @@ SEATS = "Seats"
 SEAT_INLINE = "seat"
 SEATS_INLINE = "seats"
 
-#: Between the items of a list, and before its last item.
+#: Between list items, and before the last item.
 LIST_SEPARATOR = ", "
 LAST_SEPARATOR = " & "
 #: Between seats and what to do for them, and between a name and its colour.
@@ -28,12 +28,12 @@ DASH = " — "
 #: Between the parts of a line ("vegan · gluten-free").
 DOT = " · "
 
-#: In place of the name of a companion that is not known.
+#: In place of an unknown companion's name.
 YOUR_GUEST = "your guest"
 
-#: The names of the colours of the seats of a guest record, in the order of
-#: its seats (`_table.SEAT_COLOURS`, the tokens `--color-seat-<n>`): the plan
-#: of the table tells in words whose seat is marked in which colour.
+#: The colour names of a guest record's seats, in seat order
+#: (`_table.SEAT_COLOURS`, the tokens `--color-seat-<n>`): the table plan
+#: says in words whose seat is marked in which colour.
 SEAT_COLOUR_NAMES = ("blue", "dark red", "green")
 
 #: The first and the next swap lines of a set.
@@ -81,18 +81,17 @@ def seats_inline(numbers: Sequence[int]) -> str:
 
 
 def seat_names(name: str, seats: Sequence[str]) -> list[str]:
-    """Who sits at each seat of a record, in the order of its seats: the
-    name of the seat; without one, the name of the record at the first seat
-    and "your guest" at a +1.  `seats` holds the name of each seat, "" for
-    a seat without one.  `["", "Oscar"]` of "Olga" -> ["Olga", "Oscar"];
-    `["", ""]` -> ["Olga", "your guest"].  The page of the record is the
-    only one that shows these names."""
+    """Who sits at each of a record's seats, in seat order: the seat's name;
+    without one, the record's name at the first seat and "your guest" at a
+    +1.  `seats` holds each seat's name, "" for a seat without one.
+    `["", "Oscar"]` for "Olga" -> ["Olga", "Oscar"]; `["", ""]` ->
+    ["Olga", "your guest"].  Only the record's own page shows these names."""
     return [seat or (name if position == 0 else YOUR_GUEST) for position, seat in enumerate(seats)]
 
 
 def colour_key(names: Sequence[str]) -> str:
-    """Whose seat is marked in which colour, for the text of the table plan:
-    each name with the colour of its place in the record, "Olga — blue",
+    """Whose seat is marked in which colour, for the table plan's text: each
+    name with the colour of its place in the record, "Olga — blue",
     "Olga — blue, your guest — dark red".  A record has at most as many
     seats as there are colours."""
     return LIST_SEPARATOR.join(
@@ -101,7 +100,7 @@ def colour_key(names: Sequence[str]) -> str:
 
 
 def section_title(seats: int) -> str:
-    """The default title of the seating section of a guest: by the number of seats."""
+    """The default title of a guest's seating section, by the number of seats."""
     return YOUR_SEAT if seats == 1 else YOUR_SEATS
 
 
@@ -144,7 +143,7 @@ def set_swap_line(numbers: Sequence[int], label: str, text: str, *, first: bool)
 
 
 def drink_reminder(numbers: Sequence[int], text: str) -> str:
-    """"seat 1 — no alcohol": the end of the line of a drink."""
+    """"seat 1 — no alcohol": the end of a drink's line."""
     return f"{seats_inline(numbers)}{DASH}{text}"
 
 

@@ -12,12 +12,12 @@ from menu_tools import _schema  # noqa: E402  (support prepares sys.path)
 
 ROOT = support.ROOT
 EXAMPLES = ROOT / "examples"
-#: name -> (data directory, arguments of the build)
+#: name -> (data directory, build arguments)
 SETS = {
     "data": (EXAMPLES / "data", ("--base-path", "/menu")),
     "data-plain": (EXAMPLES / "data-plain", ("--base-path", "/menu")),
 }
-#: Every address of a page: the shared files under the base path of the builds.
+#: Every page address: the shared files under the builds' base path.
 ASSETS_PREFIX = "/menu/assets/"
 #: The attributes that hold an address.
 ADDRESS_RE = re.compile(r'(?i)\b(?:href|src|srcset|poster|action|formaction)\s*=\s*"([^"]*)"')
@@ -173,8 +173,8 @@ class ExamplePagesTest(unittest.TestCase):
                     self.assertNotIn('href="#s-cover"', line)
 
     def test_the_headings_have_no_gaps(self):
-        # h1 the cover, h2 a section, h3 the heading of a part and a set
-        # outside a part, h4 a set inside a part
+        # h1 the cover, h2 a section, h3 a part heading and a set outside
+        # a part, h4 a set inside a part
         for name, (_out, _menu, _guests, pages, _staff) in self.built.items():
             for token, page in pages.items():
                 levels = [int(level) for level in re.findall(r"<h([1-6])[\s>]", page)]
@@ -195,7 +195,7 @@ class ExamplePagesTest(unittest.TestCase):
                 self.assertIn('aria-labelledby="s-food--w4--title"', food)
                 info = re.search(r'<section class="section" id="s-info".*?</section>', page, re.S).group(0)
                 self.assertEqual(re.findall(r"<h3 [^>]*>([^<]*)</h3>", info), ["Smoking", "Instant camera"])
-        # the eyebrows of the staff page are its own
+        # the staff page has its own eyebrows
         staff = pages[self.built["data"][4]]
         self.assertIn("Shared plates · on the table by 19:15", staff)
         guest = pages[self.built["data"][2][0]["token"]]
@@ -203,8 +203,8 @@ class ExamplePagesTest(unittest.TestCase):
         self.assertNotIn("on the table by 19:15", guest)
 
     def test_the_names_under_the_plan_take_the_colours_of_the_seats(self):
-        # a name per seat in the order of the record, a +1 without a name is
-        # "your guest", a record for two shows the names of its seats
+        # a name per seat in record order, a +1 without a name is "your
+        # guest", a record for two shows its seats' names
         expected = {
             "data": {"Greta": ["Greta", "Hugo"], "Trent": ["Trent", "Oscar"], "Heidi": ["Heidi", "your guest"],
                      "Peggy and Walter": ["Peggy", "Walter"], "Rupert": ["Rupert"]},
@@ -233,7 +233,7 @@ class ExamplePagesTest(unittest.TestCase):
                     if "table" in menu:
                         total = sum(item.get("count", 1) for item in menu["table"]["seats"])
                         self.assertEqual(re.findall(r"\d+", label.group(1)), [str(total)])
-                        # no couple on the plan of a guest
+                        # no couple on a guest's plan
                         self.assertNotIn("seat--couple", seats)
                         self.assertNotIn("scheme__couple", seats)
 
@@ -275,7 +275,7 @@ class ExamplePagesTest(unittest.TestCase):
                 with self.subTest(set=name, page=token):
                     self.assertEqual("staff-bar" in page, token == staff)
                     self.assertEqual("Staff version · not for guests" in page, token == staff)
-                    # the bar writes the word itself before the date of the data
+                    # the bar writes the word itself before the date from the data
                     self.assertEqual(bool(re.search(r">updated \d{1,2} [A-Z][a-z]+ \d{4}<", page)), token == staff)
                     self.assertNotIn("updated updated", page)
                     self.assertIn('<html lang="en" class="menu menu--staff">' if token == staff

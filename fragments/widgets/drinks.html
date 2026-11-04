@@ -1,4 +1,4 @@
-<!-- The drinks; expects in `.`: domId, groups[] (title, layout - list | inline, joined, items[] - category, name, line), list[] (category, name, line), note; in the page root: isStaff. The guest page has the groups under small capitals: an inline group is its one line (joined), a list group names every drink under the label of its category. The staff page has one list instead, the category on the left and the text on the right. The note stands under them. -->
+<!-- The drinks; expects in `.`: domId, groups[] (title, layout - list | inline, joined, items[] - category, name, line), list[] (category, name, line), note; in the page root: isStaff. The guest page has the groups under small capitals: an inline group is its one line (joined), a list group names every drink under its category label. The staff page has one list instead, the category on the left and the text on the right. The note stands under them. -->
 <div class="widget drinks-widget drinks" id="{{.domId}}"><!-- if:!isStaff -->
   <!-- each:.groups -->
   <div class="drinks__group drinks__group--{{.layout}}"><!-- if:.title -->

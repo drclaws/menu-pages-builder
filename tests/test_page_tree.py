@@ -80,12 +80,12 @@ class WordsTest(unittest.TestCase):
 
     def test_seat_names(self):
         self.assertEqual(_words.seat_names("Olga", [""]), ["Olga"])
-        # a +1 without a name, a +1 with one, in the order of the seats
+        # a +1 without a name, a +1 with one, in seat order
         self.assertEqual(_words.seat_names("Olga", ["", ""]), ["Olga", "your guest"])
         self.assertEqual(_words.seat_names("Olga", ["", "Oscar"]), ["Olga", "Oscar"])
         self.assertEqual(_words.seat_names("Olga", ["", "", "Hugo"]), ["Olga", "your guest", "Hugo"])
-        # a record for two: the names of its seats, the name of the record
-        # only for a first seat without one
+        # a record for two: its seats' names, the record's name only for a
+        # first seat without one
         self.assertEqual(_words.seat_names("Peggy and Victor", ["Peggy", "Victor"]), ["Peggy", "Victor"])
         self.assertEqual(_words.seat_names("Peggy and Victor", ["", "Victor"]), ["Peggy and Victor", "Victor"])
 
@@ -121,7 +121,7 @@ class WordsTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# The seats of a guest
+# A guest's seats
 # --------------------------------------------------------------------------
 
 
@@ -141,7 +141,6 @@ class GuestSeatsTest(unittest.TestCase):
     def test_one_seat(self):
         widget = self.seating_of("Boris")
         self.assertEqual(self.names(widget), [("Boris", "1")])
-        self.assertEqual(widget["mySeats"], [{"number": 4, "mark": "you"}])
         scheme = widget["scheme"]
         self.assertEqual(scheme["mine"], f"Boris{DASH}blue")
         self.assertTrue(scheme["single"])
@@ -153,7 +152,6 @@ class GuestSeatsTest(unittest.TestCase):
     def test_a_plus_one_without_a_name(self):
         widget = self.seating_of("Olga")
         self.assertEqual(self.names(widget), [("Olga", "1"), ("your guest", "2")])
-        self.assertEqual(widget["mySeats"], [{"number": 8, "mark": "you"}, {"number": 9, "mark": "plusOne"}])
         self.assertEqual(widget["scheme"]["mine"], f"Olga{DASH}blue, your guest{DASH}dark red")
         self.assertEqual(self.colours(widget["scheme"]), {"8": "1", "9": "2"})
 
@@ -161,15 +159,14 @@ class GuestSeatsTest(unittest.TestCase):
         # the names under the plan name the companion; the plan has no labels
         widget = self.seating_of("Nina")
         self.assertEqual(self.names(widget), [("Nina", "1"), ("Oscar", "2")])
-        self.assertEqual(widget["mySeats"], [{"number": 15, "mark": "you"}, {"number": 16, "mark": "plusOne"}])
+        self.assertEqual(self.colours(widget["scheme"]), {"15": "1", "16": "2"})
         self.assertEqual(widget["scheme"]["labels"], [])
 
     def test_a_plus_one_across_the_end_of_the_numbers(self):
         # the guest on seat 19, the +1 on seat 1: the colours follow the
-        # order of the record, not the numbers
+        # record order, not the numbers
         widget = self.seating_of("Greta")
         self.assertEqual(self.names(widget), [("Greta", "1"), ("Hugo", "2")])
-        self.assertEqual(widget["mySeats"], [{"number": 1, "mark": "plusOne"}, {"number": 19, "mark": "you"}])
         scheme = widget["scheme"]
         self.assertEqual(scheme["mine"], f"Greta{DASH}blue, Hugo{DASH}dark red")
         self.assertFalse(scheme["single"])
@@ -179,10 +176,9 @@ class GuestSeatsTest(unittest.TestCase):
         self.assertEqual(scheme["labels"], [])
 
     def test_a_record_for_two(self):
-        # the names of the seats, not the name of the record
+        # the seat names, not the record name
         widget = self.seating_of("Peggy and Victor")
         self.assertEqual(self.names(widget), [("Peggy", "1"), ("Victor", "2")])
-        self.assertEqual(widget["mySeats"], [{"number": 2, "mark": "you"}, {"number": 3, "mark": "none"}])
         scheme = widget["scheme"]
         self.assertEqual(self.colours(scheme), {"2": "1", "3": "2"})
         self.assertEqual(scheme["labels"], [])
@@ -195,7 +191,6 @@ class GuestSeatsTest(unittest.TestCase):
         trees, _report = build(menu, guests)
         widget = seating(guest_tree(trees, guests, "Olga"))
         self.assertEqual(self.names(widget), [("Olga", "1"), ("your guest", "2"), ("Ada", "3")])
-        self.assertEqual({item["mark"] for item in widget["mySeats"]}, {"none"})
         self.assertEqual(self.colours(widget["scheme"]), {"8": "1", "9": "2", "13": "3"})
         self.assertEqual(widget["scheme"]["labels"], [])
         self.assertEqual(widget["scheme"]["mine"], f"Olga{DASH}blue, your guest{DASH}dark red, Ada{DASH}green")
@@ -206,8 +201,8 @@ class GuestSeatsTest(unittest.TestCase):
         report = _core.Report()
         _schema.check_data(menu, guests, report)
         self.assertEqual(report.errors, [
-            "guests.json: guest #1: field 'seats' lists 4 seats, at most 3 are allowed: the page of a guest "
-            "marks each seat of the record in a colour of its own (split the record in two)"])
+            "guests.json: guest #1: field 'seats' lists 4 seats, at most 3 are allowed: a guest page marks "
+            "each of the record's seats in a colour of its own (split the record in two)"])
 
     def test_companions_with_and_without_a_name(self):
         menu, guests = fixtures.mockup16()
@@ -220,7 +215,7 @@ class GuestSeatsTest(unittest.TestCase):
         trees, _report = build(menu, guests)
         self.assertEqual(self.names(seating(guest_tree(trees, guests, "Olga"))),
                          [("Olga", "1"), ("Ada", "2"), ("Hugo", "3")])
-        # a name of blanks is no name
+        # a name of only blanks is no name
         olga["seats"][2]["name"] = "  "
         trees, _report = build(menu, guests)
         self.assertEqual(self.names(seating(guest_tree(trees, guests, "Olga"))),
@@ -312,7 +307,7 @@ class GuestPageTest(unittest.TestCase):
         self.assertEqual([item["name"] for item in dishes["items"]], ["Tomato bruschetta", "Cheese board", "Hummus with vegetables"])
         self.assertEqual(dishes["items"][1]["ingredients"], "Three cheeses, honey, walnuts")
         (sets,) = widgets(tree, "sets")
-        self.assertEqual((sets["count"], sets["multiple"]), (2, True))
+        self.assertEqual((len(sets["items"]), sets["multiple"]), (2, True))
         self.assertEqual(sets["note"], "Your waiter will take your choice after the starters.")
         fish = sets["items"][0]
         self.assertEqual((fish["id"], fish["domId"], fish["title"], fish["hint"]), ("fish", "s-main--w1--set-fish", "Set A", "Fish"))
@@ -516,7 +511,7 @@ class OptionsTest(unittest.TestCase):
         trees, _report = build(menu, guests)
         widget = seating(guest_tree(trees, guests, "Klara"))
         self.assertIsNone(widget["scheme"])
-        # the names under the place of the plan keep their colours
+        # the names where the plan would be keep their colours
         self.assertEqual(widget["names"], [{"name": "Klara", "colour": "1"}, {"name": "your guest", "colour": "2"}])
         staff = seating(trees.staff.tree)
         self.assertIsNone(staff["scheme"])
@@ -536,7 +531,7 @@ class OptionsTest(unittest.TestCase):
 
     def test_a_plan_that_cannot_be_laid_out_is_an_error_of_the_record(self):
         # checked data always fits (the label "You" has room at every seat);
-        # the error of a layout names the record and seat numbers only
+        # a layout error names only the record and seat numbers
         menu, guests = fixtures.reserved19()
         guest_scheme = _table.guest_scheme
 
@@ -599,13 +594,12 @@ SECTION_FIELDS = {"id", "type", "domId", "titleId", "title", "eyebrow", "note", 
 WIDGET_BASE = {"type", "domId", "labelledBy"}
 WIDGET_FIELDS = {
     "text": {"text", "variant"},
-    "seating": {"scheme", "mySeats", "names", "legend", "rows", "footnote"},
+    "seating": {"scheme", "names", "legend", "rows", "footnote"},
     "dishes": {"title", "items"},
-    "sets": {"items", "note", "count", "multiple"},
+    "sets": {"items", "note", "multiple"},
     "drinks": {"groups", "list", "note"},
     "heading": {"titleId", "title", "eyebrow"},
 }
-MY_SEAT_FIELDS = {"number", "mark"}
 NAME_FIELDS = {"name", "colour"}
 LEGEND_FIELDS = {"letter", "label"}
 ROW_FIELDS = {"number", "name", "isPlusOne", "hostName", "roleLabel", "isCouple", "isFree", "tags"}
@@ -617,8 +611,8 @@ SCHEME_FIELDS = {"width", "height", "hidden", "tableLabel", "total", "mine", "si
 
 
 class ContractTest(unittest.TestCase):
-    """Every node of every tree has exactly the fields of the contract, of
-    the right types."""
+    """Every node of every tree has exactly the contract fields, of the
+    right types."""
 
     def assert_fields(self, node: dict, fields: set, where: str) -> None:
         self.assertIsInstance(node, dict, where)
@@ -641,7 +635,7 @@ class ContractTest(unittest.TestCase):
             self.assert_strings(item, ("id", "domId", "titleId", "title", "eyebrow", "note"), where)
             for widget in item["widgets"]:
                 self.check_widget(widget, f"{where}/{widget['domId']}")
-        # a link of the line leads to a section of the page, in their order
+        # each navigation bar link leads to a section of the page, in their order
         dom_ids = [item["domId"] for item in tree["sections"]]
         for item in tree["nav"]:
             self.assert_fields(item, NAV_FIELDS, where)
@@ -656,15 +650,14 @@ class ContractTest(unittest.TestCase):
         if kind == "text":
             self.assertIn(widget["variant"], ("body", "lead", "card", "signature"))
         elif kind == "seating":
+            # a name per guest seat, in the colours of their places in the
+            # record; the plan shows the same colours on the guest's seats
+            colours = [item["colour"] for item in widget["names"]]
+            self.assertEqual(colours, list(_table.SEAT_COLOURS[:len(colours)]), where)
             if widget["scheme"] is not None:
                 self.assert_fields(widget["scheme"], SCHEME_FIELDS, where)
-            for item in widget["mySeats"]:
-                self.assert_fields(item, MY_SEAT_FIELDS, where)
-                self.assertIn(item["mark"], _page.MARKS)
-                self.assertIsInstance(item["number"], int)
-            # a name per seat of a guest, in the colours of the places of the record
-            self.assertEqual([item["colour"] for item in widget["names"]],
-                             list(_table.SEAT_COLOURS[:len(widget["mySeats"])]), where)
+                self.assertEqual(sorted(seat["colour"] for seat in widget["scheme"]["seats"] if seat["colour"]),
+                                 colours, where)
             for item in widget["names"]:
                 self.assert_fields(item, NAME_FIELDS, where)
                 self.assert_strings(item, ("name",), where)
@@ -679,7 +672,6 @@ class ContractTest(unittest.TestCase):
             for item in widget["items"]:
                 self.check_dish(item, where)
         elif kind == "sets":
-            self.assertEqual(widget["count"], len(widget["items"]))
             self.assertEqual(widget["multiple"], len(widget["items"]) > 1)
             for item in widget["items"]:
                 self.assert_fields(item, SET_FIELDS, where)
@@ -736,7 +728,7 @@ class ContractTest(unittest.TestCase):
                             self.check_group(group, name)
                         layouts.add(group["layout"])
         self.assertEqual(layouts, {"list", "inline"})
-        # the one widget of drinks of the plain menu: the guest line, the staff note
+        # the plain menu's one drinks widget: the guest line, the staff note
         menu, guests = fixtures.plain()
         trees, _report = build(menu, guests)
         (guest,) = widgets(trees.guests[0].tree, "drinks")
@@ -758,7 +750,7 @@ class ContractTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# The line of the sections
+# The navigation bar
 # --------------------------------------------------------------------------
 
 
@@ -776,7 +768,7 @@ class NavTest(unittest.TestCase):
         for page in trees.guests + [trees.staff]:
             with self.subTest(page=page.number):
                 self.assertEqual(nav(page.tree), MAIN_LINE)
-        # data without labels: no line
+        # data without labels: no bar
         for name in ("mockup16", "reserved19", "plain"):
             trees, _report = build(*fixtures.SETS[name]())
             for page in trees.guests + [trees.staff]:
@@ -832,12 +824,12 @@ class NavTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# The parts of a section under their headings
+# Section parts under their headings
 # --------------------------------------------------------------------------
 
 
 def layout(tree: dict, section_id: str) -> list[tuple[str, str]]:
-    """(type, domId) of the widgets of a section."""
+    """(type, domId) of a section's widgets."""
     found = section(tree, section_id)
     return None if found is None else [(widget["type"], widget["domId"]) for widget in found["widgets"]]
 
@@ -862,10 +854,10 @@ class PartsTest(unittest.TestCase):
         self.assertEqual(sets["labelledBy"], "s-food--w4--title")
         self.assertEqual([item["nested"] for item in sets["items"]], [True, True])
         self.assertEqual(section(boris, "food")["title"], "Food")
-        # the part for the staff only is not on the page of a guest
+        # the part for the staff only is not on a guest page
         self.assertEqual(layout(boris, "info"), [("heading", "s-info--w1"), ("text", "s-info--w2"),
                                                  ("heading", "s-info--w3"), ("text", "s-info--w4")])
-        # the card hidden by the record keeps the numbers of the others
+        # the card the record hides keeps the others' numbers
         gleb = guest_tree(self.trees, self.guests, "Gleb")
         self.assertEqual([dom_id for _kind, dom_id in layout(gleb, "food")],
                          ["s-food--w1", "s-food--w2", "s-food--w4", "s-food--w5"])
@@ -876,7 +868,7 @@ class PartsTest(unittest.TestCase):
                                                  ("dishes", "s-food--w3"), ("heading", "s-food--w4"),
                                                  ("sets", "s-food--w5")])
         starters, _dishes, _on_request, main, sets = section(staff, "food")["widgets"]
-        # the eyebrows for the staff replace those of the guests, the titles stay
+        # the staff eyebrows replace the guest ones, the titles stay
         self.assertEqual((starters["title"], starters["eyebrow"]),
                          ("Starters", "Shared plates · on the table by 19:15"))
         self.assertEqual((main["title"], main["eyebrow"]),
@@ -885,7 +877,7 @@ class PartsTest(unittest.TestCase):
         self.assertEqual({item["nested"] for item in sets["items"]}, {True})
         self.assertEqual([widget["title"] for widget in section(staff, "info")["widgets"]
                           if widget["type"] == "heading"], ["Smoking", "Instant camera", "Clearing up"])
-        # a title for the staff replaces the title of the guests there alone
+        # a staff title replaces the guests' title on the staff page alone
         menu, guests = fixtures.parts()
         menu["sections"][2]["widgets"][0]["staff"]["title"] = "Starters at 19:15"
         trees, _report = build(menu, guests)
@@ -929,7 +921,7 @@ class PartsTest(unittest.TestCase):
         self.assertIsNone(section(guest_tree(trees, guests, "Boris"), "sweets"))
         self.assertEqual(layout(guest_tree(trees, guests, "Galina"), "sweets"),
                          [("heading", "s-sweets--w1"), ("text", "s-sweets--w2")])
-        # with a note of the guest the section stays, the note alone
+        # with a note for the guest the section stays, with the note alone
         record["sections"]["sweets"]["note"] = "We kept a slice for you."
         trees, _report = build(menu, guests)
         sweets = section(guest_tree(trees, guests, "Boris"), "sweets")

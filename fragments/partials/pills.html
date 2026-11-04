@@ -1,2 +1,2 @@
-<!-- The pills of a dish on the staff page; expects in `.`: a dish - allergens[] (orange pills), tags (one grey pill), noRestrictions (the grey pill "no restrictions"). The row is empty, and takes no room, when the dish says nothing of its allergens. -->
+<!-- The pills of a dish on the staff page; expects in `.`: a dish - allergens[] (orange pills), tags (one grey pill), noRestrictions (the grey pill "no restrictions"). The row is empty, and takes no room, when the dish says nothing about its allergens. -->
 <ul class="pills" role="list"><!-- each:.allergens --><li class="pill pill--flag">{{.}}</li><!-- endeach --><!-- if:.tags --><li class="pill">{{.tags}}</li><!-- endif --><!-- if:.noRestrictions --><li class="pill">no restrictions</li><!-- endif --></ul>

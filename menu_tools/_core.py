@@ -1,23 +1,22 @@
-"""The names the rest of the package takes from the engine of the build.
+"""Shared helpers of the package, re-exported in one place.
 
-The modules of the engine are `_engine` (the template engine, the report of a
-command, the checks of the finished output, the output directory, the masking
-of tokens, the types of the command line arguments), `_values` (JSON, paths
-in messages, ids, tokens), `_checks` (the messages of the data checks),
-`_tokens` (the design tokens of a style sheet) and `_icon` (the icon).  The
-builder, the checks of the data and the checks of the output use them through
-this module only, so `__all__` below is the whole surface they rely on.
+The helpers live in `_engine` (templates, command reports, output checks,
+the output directory, token masking, command-line argument types),
+`_values` (JSON, paths in messages, ids, tokens), `_checks` (messages of the
+data checks), `_tokens` (design tokens of a style sheet) and `_icon` (the
+icon).  The builder, the data checks and the output checks import them from
+this module only, so `__all__` below lists everything they use.
 
-Every name is the one it has in its module.  The one alias is
-`SCHEMA_MISSING`: `_checks.MISSING`, what the methods of `_Checker` return for
-a field without a usable value (`MISSING` is the one of `_engine`, returned by
-`read_json`).
+Every name is the one it has in its module, with one alias:
+`SCHEMA_MISSING` is `_checks.MISSING`, which the `_Checker` methods return
+for a field without a usable value (`MISSING` comes from `_engine` and is
+what `read_json` returns).
 """
 
 from __future__ import annotations
 
 from menu_tools._checks import MISSING as SCHEMA_MISSING
-from menu_tools._checks import _Checker
+from menu_tools._checks import _Checker, _known_list
 from menu_tools._engine import (
     CI_ENVIRONMENT_VARIABLES,
     EXIT_ERROR,
@@ -69,7 +68,7 @@ from menu_tools._values import (
     show_id,
 )
 
-#: Everything the package takes from the engine.
+#: Every name the rest of the package imports from here.
 __all__ = [
     # template engine
     "Template",
@@ -99,6 +98,7 @@ __all__ = [
     "format_size",
     # schema messages
     "_Checker",
+    "_known_list",
     "SCHEMA_MISSING",
     # output checks, output directory, masking
     "check_output",
