@@ -181,7 +181,7 @@ class StyleSheetTest(unittest.TestCase):
 
     def test_no_styles_of_link_buttons(self):
         # the pages have no link button, so no rule styles one; its tokens
-        # stay in section 1, a copy of the tokens of the invitations
+        # stay in section 1 with the other general tokens
         self.assertNotRegex(self.code, r"\.btn\b")
         self.assertIn("--btn-padding-block:", self.section_code("1"))
         header = self.raw[:self.raw.index("*/") + 2]

@@ -110,8 +110,8 @@ class CliTest(unittest.TestCase):
         for option in ("--data DIR", "--out DIR", "--base-path PATH"):
             self.assertIn(option, result.stdout)
         self.assertEqual(re.findall(r"(?m)^  (--[\w-]+)", result.stdout), ["--data", "--out", "--base-path"])
-        # no media, and no directory of the site outside the output to link to
-        for extra in (("--media", "media"), ("--allow-path", "/other")):
+        # any other option is a bad command line
+        for extra in (("--theme", "dark"), ("--watch",)):
             with self.subTest(extra=extra):
                 result = run_main("build", *extra)
                 self.assertEqual(result.returncode, 2)

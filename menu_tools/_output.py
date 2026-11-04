@@ -1,29 +1,27 @@
 """Checks of the finished output of the menu builder.
 
-The output is checked by the invitations' `check_output` without a media
-directory: its allow-list then holds the layout of the menu, a directory
-`<token>/` with `index.html` for every page and `assets/` with the files of
-the code.  Every local address of a page, a link as well as a resource, has
-to lie under the base path and name a file of the output: a page that leads
-to another part of the site is an error.
+The output is checked by `check_output` of the engine first: the top of the
+output holds a directory `<token>/` with `index.html` for every page and
+`assets/`, and nothing else.  Every local address of a page, a link as well
+as a resource, has to lie under the base path and name a file of the
+output: a page that leads to another part of the site is an error.
 
 On top of that, `assets/` holds `app.css`, `app.js` and `favicon.svg` and
 nothing else (any other file of the code that would be published, a font or
 a note, is a problem), no element of a page may carry a `style` attribute,
 inside an inline SVG as well: the styles of the pages live in
-`assets/app.css` alone (the invitations' checks look at the URLs of a
-`style` attribute, not at the attribute itself), a page links only to its
-own parts: every `<a>` and `<area>` has an `href` of the form `#<id>`, the
-id of an element of the same page (the invitations' checks let a fragment
-pass without looking at its target, and a link to another page of the
-output would resolve), and no file holds the token of a record, in any
-letter case, its own page included: a token is only the name of the
-directory of its page.
+`assets/app.css` alone (`check_output` looks at the URLs of a `style`
+attribute, not at the attribute itself), a page links only to its own
+parts: every `<a>` and `<area>` has an `href` of the form `#<id>`, the id of
+an element of the same page (`check_output` lets a fragment pass without
+looking at its target, and a link to another page of the output would
+resolve), and no file holds the token of a record, in any letter case, its
+own page included: a token is only the name of the directory of its page.
 
 Every problem is reported in one `OutputError`, at most
-`MAX_REPORTED_PROBLEMS` lines as in the invitations.  The messages never
-quote the text of a page nor a token, and the directories of the pages are
-shown as `…`: they are named after the tokens.
+`MAX_REPORTED_PROBLEMS` lines, as `check_output` reports them.  The messages
+never quote the text of a page nor a token, and the directories of the pages
+are shown as `…`: they are named after the tokens.
 """
 
 from __future__ import annotations
@@ -284,16 +282,16 @@ def check_menu_output(
     staff), `numbers` the numbers of their records in `guests.json` for the
     messages (see `token_problems`).
 
-    The invitations' `check_output` with no media directory, then the files
-    of `assets/`, the `style` attributes and the links of the pages and the
-    tokens in the files; every problem together raises one `OutputError`.
+    `check_output` of the engine, then the files of `assets/`, the `style`
+    attributes and the links of the pages and the tokens in the files;
+    every problem together raises one `OutputError`.
     """
     pages = list(pages)
     problems: list[str] = []
     hidden = 0
     stats = None
     try:
-        stats = _core.check_output(out_dir, pages, media_dir="", base_path=base_path)
+        stats = _core.check_output(out_dir, pages, base_path=base_path)
     except _core.OutputError as exc:
         problems = list(exc.errors)
         more = _MORE_RE.match(problems[-1]) if problems else None

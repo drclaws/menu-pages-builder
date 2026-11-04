@@ -137,7 +137,7 @@ class OutputChecksTest(support.TempDirTestCase):
 
     def test_assets_hold_the_style_sheet_the_script_and_the_icon_alone(self):
         self.assertEqual(_output.ASSETS_RULE, "only app.css, app.js and favicon.svg are published in assets/")
-        # files the invitations would publish in assets/: a note, a font, a picture
+        # files a page could use from assets/: a note, a font, a picture
         out = self.make_output()
         (out / "assets" / "notes.txt").write_text("x", encoding="utf-8")
         (out / "assets" / "fonts").mkdir()
@@ -219,6 +219,10 @@ class OutputChecksTest(support.TempDirTestCase):
                  f"…/index.html line {BODY_LINE}: <area href> {_output.LINK_RULE}"]),
             "an area without href": ('<map name="m"><area shape="rect" coords="0,0,1,1" alt=""></map>',
                                      [f"…/index.html line {BODY_LINE}: <area href> {_output.LINK_RULE}"]),
+            "an address on another host": (
+                '<a href="https://maps.example.org/nowhere" target="_blank" rel="noopener noreferrer">Map</a>',
+                [f"…/index.html line {BODY_LINE}: <a href>: external link 'https://maps.example.org/…' "
+                 "is not allowed", not_a_part]),
         }
         for name, (body, expected) in cases.items():
             with self.subTest(case=name):

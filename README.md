@@ -2,7 +2,7 @@
 
 A builder of static personal dinner-menu pages: one page per guest (their
 seats, the menu, drinks) and one staff page for the restaurant, each at its own
-secret address. It is the companion of a builder of personal invitations.
+secret address.
 
 The principles behind all of the code:
 

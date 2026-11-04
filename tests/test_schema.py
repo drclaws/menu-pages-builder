@@ -150,9 +150,9 @@ def _(menu, guests):
     menu["sections"][5]["widgets"].append({"type": "link"})
 
 
-@case("link_to_an_invitation_is_an_unknown_field", errors=[M + "unknown field 'invitationLink'"])
+@case("a_link_back_is_an_unknown_field", errors=[M + "unknown field 'backLink'"])
 def _(menu, guests):
-    menu["invitationLink"] = {"text": "Back", "href": "/{token}/"}
+    menu["backLink"] = {"text": "Back", "href": "/{token}/"}
 
 
 @case("two_seating_widgets", errors=[M + "field 'sections' has 2 seating widgets; there may be only one"])

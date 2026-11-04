@@ -27,10 +27,6 @@ from menu_tools._values import (
 )
 
 
-#: A video is published as one file that every browser plays.
-VIDEO_EXTENSIONS = frozenset({".mp4"})
-
-
 #: How many known ids a message lists at most.
 MAX_LISTED = 8
 
@@ -58,7 +54,7 @@ def report_warning(report: Any) -> Callable[[str], None]:
 
 
 class _Checker:
-    """Messages about one document or one invitation.
+    """Messages about one document or one record of it.
 
     `known` switches on the strict mode of `format_path`: only these keys
     are shown.  `errors` counts the errors reported through the checker.

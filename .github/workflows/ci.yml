@@ -73,12 +73,11 @@ jobs:
       - name: No Cyrillic in tracked files
         run: |
           set -euo pipefail
-          # Every tracked file of this repository, read as UTF-8.  The submodule is a
-          # single entry of the listing (its directory) and is not entered.  A name or
-          # a file that is not UTF-8 is refused too: Cyrillic in another encoding would
-          # go unseen.  Only file names and line numbers are printed, never the text.
+          # Every tracked file of this repository, read as UTF-8.  A name or a file
+          # that is not UTF-8 is refused too: Cyrillic in another encoding would go
+          # unseen.  Only file names and line numbers are printed, never the text.
           git ls-files -z | python -c '
-          import os, sys
+          import sys
           def cyrillic(text):
               return any(0x400 <= ord(char) <= 0x4FF for char in text)
           found = []
@@ -89,11 +88,10 @@ jobs:
               try:
                   if cyrillic(raw.decode("utf-8")):
                       found.append(f"{name}: in the file name")
-                  if os.path.isfile(raw):
-                      with open(raw, "rb") as handle:
-                          text = handle.read().decode("utf-8")
-                      found += [f"{name}:{number}" for number, line in
-                                enumerate(text.split("\n"), 1) if cyrillic(line)]
+                  with open(raw, "rb") as handle:
+                      text = handle.read().decode("utf-8")
+                  found += [f"{name}:{number}" for number, line in
+                            enumerate(text.split("\n"), 1) if cyrillic(line)]
               except UnicodeDecodeError:
                   found.append(f"{name}: not UTF-8")
           if found:

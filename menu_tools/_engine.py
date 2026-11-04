@@ -8,13 +8,11 @@
   tokens it has seen (`redact`); `BuildError`, `TemplateError` and
   `ValidationError` are the expected failures.  `read_json` reads a JSON
   document and reports its problems without quoting the data.
-- `check_output(out_dir, pages)` checks the finished output: nothing but the
-  expected files, no external resources, no inline scripts, every local link
-  resolves inside the output, no file above the hosting size limit;
+- `check_output(out_dir, pages)` checks the finished output: nothing but
+  `assets/` and the directories of the pages at the top, no external
+  resources or links, no inline scripts, every local URL resolves inside the
+  output, no file above the hosting size limit;
   `check_html`, `check_stylesheet` and `check_svg` check one document.
-  `check_output` and `check_html` take the keyword `allow_paths` (default
-  `()`): directories under which links are allowed and not looked up, checked
-  by `check_allow_paths` (a refused one raises `ValueError`).
 - `check_out_dir` refuses an output directory whose replacement would destroy
   anything; `_StagedOutput` assembles the output next to it and swaps it in
   only when every check has passed; `write_pages` and `copy_assets` fill it.
@@ -44,16 +42,8 @@ from pathlib import Path
 from typing import Any, Callable, Collection, Iterable, NamedTuple, Sequence
 from urllib.parse import unquote, urlsplit
 
-from menu_tools import _checks as schema
-from menu_tools import _icon as gen_assets
 from menu_tools import _values as data_tools
-from menu_tools._values import (
-    IMAGE_EXTENSIONS,
-    _extension_list,
-    check_token_prefix,
-    format_size,
-    json_type,
-)
+from menu_tools._values import check_token_prefix, format_size, json_type
 
 # --------------------------------------------------------------------------
 # Layout constants
@@ -73,40 +63,16 @@ MAX_BASE_PATH_LENGTH = 200
 #: `/` or `/seg[/seg…]` with an optional trailing `/`.
 _BASE_PATH_RE = re.compile(r"(?:/[A-Za-z0-9_-]+)*/?")
 
-#: The files the build wrote at the top of `--out` while it built the whole
-#: site.  A directory that holds one of them is a site of that layout, never a
-#: build of the invitations (see `check_replaceable`).
-OLD_LAYOUT_FILES = frozenset({"index.html", "404.html", "_headers", "robots.txt"})
-
-SITE_IMAGE_TYPES = {
-    ".svg": "image/svg+xml",
-    ".png": "image/png",
-    ".ico": "image/x-icon",
-    ".jpg": "image/jpeg",
-}
-
-
 #: Files created by the operating system; ignored when `--out` is inspected.
 OS_JUNK_FILES = frozenset({".DS_Store", "Thumbs.db", "desktop.ini"})
 
 #: Hosting limit for a single file.
 MAX_FILE_BYTES = 25 * 1024 * 1024
-#: Everything that may live below `assets/` in the output (`.txt` is meant for
-#: the licences of fonts and the like).
-ASSET_EXTENSIONS = frozenset(
-    {".css", ".js", ".woff2", ".ico", ".txt"} | IMAGE_EXTENSIONS | schema.VIDEO_EXTENSIONS
-)
+#: The types of the files the build writes; a message about a path shows its
+#: extension only when it is one of them.
+SHOWN_EXTENSIONS = frozenset({".html", ".css", ".js", ".svg"})
 #: Never published, wherever they turn up in the output.
 FORBIDDEN_OUTPUT_EXTENSIONS = frozenset({".json", ".map", ".py", ".md"})
-
-
-#: The only external links a page may contain: map services, opened on click.
-#: (host, required path prefix); the scheme is always https.
-MAP_LINK_TARGETS = (
-    ("www.google.com", "/maps/"),
-    ("yandex.ru", "/maps/"),
-    ("maps.apple.com", "/"),
-)
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -168,20 +134,16 @@ class Report:
     `on_warn` lets the caller show warnings as soon as they appear (the CLI
     prints them to stderr); errors are always reported together at the end.
 
-    The report also remembers the tokens of the invitations as soon as
-    `invitations.json` is read (`remember_tokens`), so that whatever prints
-    the messages of a command can hide them (`redact`): a path that a message
+    The report also remembers the tokens of the records as soon as
+    `guests.json` is read (`remember_tokens`), so that whatever prints the
+    messages of a command can hide them (`redact`): a path that a message
     shows may lead through the directory of a page.
     """
 
     def __init__(self, on_warn: Callable[[str], None] | None = None) -> None:
         self.errors: list[str] = []
         self.warnings: list[str] = []
-        #: Number of distinct media files of the items that the pages show.
-        self.media_files = 0
-        #: Icon and link preview image.
-        self.site_images: SiteImages = DEFAULT_SITE_IMAGES
-        #: The valid tokens of the invitations, in lower case.
+        #: The valid tokens of the records, in lower case.
         self.tokens: frozenset[str] = frozenset()
         self._on_warn = on_warn
 
@@ -193,14 +155,14 @@ class Report:
         if self._on_warn is not None:
             self._on_warn(message)
 
-    def remember_tokens(self, invitations: Any) -> None:
-        """Remember the tokens of `invitations` (the parsed `invitations.json`,
+    def remember_tokens(self, records: Any) -> None:
+        """Remember the tokens of `records` (the parsed `guests.json`,
         whatever its shape): every value that is a valid token."""
-        if not isinstance(invitations, list):
+        if not isinstance(records, list):
             return
         found = {
             item["token"].lower()
-            for item in invitations
+            for item in records
             if isinstance(item, dict) and data_tools.check_token(item.get("token")) is None
         }
         self.tokens = self.tokens | found
@@ -208,10 +170,6 @@ class Report:
     def redact(self, text: Any) -> str:
         """`text` with the tokens hidden (`redact_tokens`)."""
         return redact_tokens(text, self.tokens)
-
-    @property
-    def ok(self) -> bool:
-        return not self.errors
 
     def raise_if_failed(self) -> None:
         if self.errors:
@@ -555,7 +513,7 @@ class Fragments:
 
 
 class Template:
-    """A parsed template; parse once, render for every invitation."""
+    """A parsed template; parse once, render for every page."""
 
     def __init__(
         self, source: str, name: str = "template", fragments: Fragments | None = None
@@ -580,11 +538,7 @@ def parse_template(
     return Template(source, name, fragments)
 
 
-def check_rendered(
-    output: str,
-    name: str = "template",
-    problem: str = "rendered output still contains template syntax",
-) -> None:
+def check_rendered(output: str, name: str = "template") -> None:
     """Fail if the rendered page still contains template syntax."""
     problems: list[str] = []
     newlines = [m.start() for m in re.finditer("\n", output)]
@@ -594,7 +548,9 @@ def check_rendered(
         if len(problems) == 5:
             break
     if problems:
-        raise TemplateError(f"{problem}: " + "; ".join(problems), None, name)
+        raise TemplateError(
+            "rendered output still contains template syntax: " + "; ".join(problems), None, name
+        )
 
 
 def _parse(source: str, name: str, fragment: bool = False) -> tuple[list[Any], bool]:
@@ -874,31 +830,6 @@ class _Renderer:
 # --------------------------------------------------------------------------
 
 
-class SiteImage(NamedTuple):
-    """The icon or the link preview image of the site."""
-
-    #: File name inside `assets/`.
-    name: str
-    mime: str
-    #: The file in the media directory that replaces the generated image.
-    source: Path | None = None
-    #: Size in pixels (the link preview image only).
-    width: int = 0
-    height: int = 0
-
-
-class SiteImages(NamedTuple):
-    favicon: SiteImage
-    og: SiteImage
-
-
-#: What the build generates when the media directory provides nothing.
-DEFAULT_SITE_IMAGES = SiteImages(
-    favicon=SiteImage(gen_assets.FAVICON_FILE, SITE_IMAGE_TYPES[".svg"]),
-    og=SiteImage(gen_assets.OG_FILE, SITE_IMAGE_TYPES[".png"], None, *gen_assets.OG_SIZE),
-)
-
-
 def check_base_path(value: Any) -> str:
     """`build --base-path`: `/` or `/seg[/seg…]`, segments of A-Z, a-z, 0-9,
     `_` and `-`; a trailing `/` is dropped.  `ValueError` names the problem,
@@ -910,92 +841,13 @@ def check_base_path(value: Any) -> str:
     ):
         raise ValueError(
             "must be a path from the root of the site: '/' or segments of A-Z, a-z, "
-            "0-9, '_' and '-', each after a single '/', e.g. /invite (no '.' or '..', "
+            "0-9, '_' and '-', each after a single '/', e.g. /menu (no '.' or '..', "
             "'%', '?', '#', scheme, host or spaces)"
         )
     normalized = value.rstrip("/") or "/"
     if len(normalized) > MAX_BASE_PATH_LENGTH:
         raise ValueError(f"must be at most {MAX_BASE_PATH_LENGTH} characters long")
     return normalized
-
-
-def check_allow_path(value: Any) -> str:
-    """One `build --allow-path`: the format of `--base-path` (`check_base_path`)
-    but `/`; a trailing `/` is dropped.  `ValueError` names the problem, never
-    the value."""
-    if (
-        not isinstance(value, str)
-        or not value.startswith("/")
-        or _BASE_PATH_RE.fullmatch(value) is None
-    ):
-        raise ValueError(
-            "must be a path from the root of the site: segments of A-Z, a-z, 0-9, '_' "
-            "and '-', each after a single '/' (no '.' or '..', '%', '?', '#', scheme, "
-            "host or spaces)"
-        )
-    normalized = value.rstrip("/") or "/"
-    if normalized == "/":
-        raise ValueError("must not be '/': that would allow every path of the site")
-    if len(normalized) > MAX_BASE_PATH_LENGTH:
-        raise ValueError(f"must be at most {MAX_BASE_PATH_LENGTH} characters long")
-    return normalized
-
-
-def _is_under(path: str, directory: str) -> bool:
-    """True when `path` lies strictly below `directory` (both normalised)."""
-    return path.startswith(f"{directory.rstrip('/')}/")
-
-
-def check_allow_paths(
-    values: Iterable[Any], base_path: str = DEFAULT_BASE_PATH, pages: Iterable[str] = ()
-) -> tuple[str, ...]:
-    """`build --allow-path`: directories of the site that the build does not
-    write and that the links of the pages may lead to.
-
-    Each value is checked by `check_allow_path`; repeats are dropped, the
-    order is kept.  A value must lie apart from the output and from
-    `base_path` (normalised): not the same path, not above it, and not below
-    it unless the base path is `/` - the addresses under the base path are
-    files of the output and are looked up as before.  At the base path `/`
-    a value must not lead into the output either: its first segment is
-    neither `assets` nor one of `pages`, the tokens of the invitations (the
-    directories of their pages; letter case aside, as on a file system that
-    ignores it).  `ValueError` names the problem, never the value.
-    """
-    paths: list[str] = []
-    page_dirs = {token.lower() for token in pages if isinstance(token, str)}
-    for value in values:
-        path = check_allow_path(value)
-        if path == base_path:
-            raise ValueError(
-                "must not be the --base-path: the addresses under it are files of the "
-                "output and are checked against them"
-            )
-        if _is_under(base_path, path):
-            raise ValueError(
-                "must not contain the --base-path: the addresses under it are files of "
-                "the output and are checked against them"
-            )
-        if base_path != "/" and _is_under(path, base_path):
-            raise ValueError(
-                "must not lie under the --base-path: the addresses under it are files of "
-                "the output and are checked against them"
-            )
-        first = path.split("/")[1].lower() if base_path == "/" else None
-        if first == ASSETS_DIRNAME:
-            raise ValueError(
-                f"must not lead into {ASSETS_DIRNAME}/ of the output: the addresses there "
-                "are files of the output and are checked against them"
-            )
-        if first in page_dirs:
-            # the token itself is never shown
-            raise ValueError(
-                "must not lead into the directory of a page of the output: the addresses "
-                "there are files of the output and are checked against them"
-            )
-        if path not in paths:
-            paths.append(path)
-    return tuple(paths)
 
 
 def assets_url_path(base_path: str = DEFAULT_BASE_PATH) -> str:
@@ -1012,8 +864,8 @@ def read_json(path: Path, report: Report, known: Collection[str] | None = None) 
 
     A key repeated within one object is an error as well: the standard parser
     would silently keep the last value only.  With `known` the message shows
-    a repeated key only when it is one of these names (the keys of the
-    invitations may be somebody's name).
+    a repeated key only when it is one of these names (the keys of the guest
+    records may be somebody's name).
     """
     shown = display_path(path)
     try:
@@ -1278,25 +1130,6 @@ def _data_url_type(url: str) -> str:
     return re.split(r"[;,]", url[5:], maxsplit=1)[0].strip().lower()
 
 
-def _is_map_link(url: str) -> bool:
-    try:
-        parts = urlsplit(url)
-    except ValueError:
-        return False
-    if parts.scheme.lower() != "https":
-        return False
-    host = parts.netloc.lower()  # with user info or a port it is not the host
-    path = parts.path.lower()
-    if "\\" in url or any(code in path for code in ("%2e", "%2f", "%5c")):
-        return False  # nothing that a browser may normalise into another path
-    if any(segment in (".", "..") for segment in path.split("/")):
-        return False
-    return any(
-        host == allowed and parts.path.startswith(prefix)
-        for allowed, prefix in MAP_LINK_TARGETS
-    )
-
-
 def _srcset_urls(value: str) -> list[str]:
     """The URLs of a `srcset` (a URL may contain commas, e.g. `data:` URLs)."""
     urls: list[str] = []
@@ -1337,7 +1170,6 @@ class _UrlPolicy:
         is_dir: Callable[[str], bool] | None = None,
         base: str | None = None,
         base_path: str = DEFAULT_BASE_PATH,
-        allow_paths: Sequence[str] = (),
     ):
         self.exists = exists
         self.is_dir = is_dir if is_dir is not None else (lambda _path: False)
@@ -1347,42 +1179,20 @@ class _UrlPolicy:
         #: The path the output is published under (`build --base-path`): a
         #: local URL must lie under it.
         self.base_path = base_path
-        #: Directories of the site the build does not write (`build
-        #: --allow-path`), as `check_allow_paths` returns them: a link under
-        #: one of them is not looked up.
-        self.allow_paths = tuple(allow_paths)
         self.problems: list[tuple[int, str]] = []
-
-    def _allowed_directory(self, url: str) -> str | None:
-        """The directory of `allow_paths` that a root-absolute URL lies under."""
-        path = _url_path(url)
-        return next(
-            (
-                directory
-                for directory in self.allow_paths
-                if path == directory or path.startswith(f"{directory}/")
-            ),
-            None,
-        )
 
     def show_path(self, url: str) -> str:
         """A local or relative URL for a message.
 
-        Only the base path, the directories that exist in the output and a
-        known file extension are shown: the rest may be text that a template
-        put into a path by mistake.  Under a directory of `allow_paths` only
-        that directory is shown: it comes from the command line, the rest of
-        the path does not.
+        Only the base path, the directories that exist in the output and the
+        extension of a type the build writes are shown: the rest may be text
+        that a template put into a path by mistake.
         """
         path = _clean_url(url).split("#", 1)[0].split("?", 1)[0]
         absolute = path.startswith("/")
         segments = [segment for segment in path.split("/") if segment]
         kept: list[str] = []
-        allowed = self._allowed_directory(url) if absolute and self.allow_paths else None
-        if allowed is not None:
-            directory = [segment for segment in allowed.split("/") if segment]
-            kept = directory if segments[: len(directory)] == directory else []
-        elif absolute:
+        if absolute:
             base = [segment for segment in self.base_path.split("/") if segment]
             start = len(base) if segments[: len(base)] == base else 0
             kept = segments[:start]
@@ -1397,7 +1207,7 @@ class _UrlPolicy:
         if len(kept) == len(segments):
             return lead + "/".join(kept) + ("/" if kept else "")
         extension = os.path.splitext(segments[-1])[1].lower()
-        if extension not in ASSET_EXTENSIONS and extension != ".html":
+        if extension not in SHOWN_EXTENSIONS:
             extension = ""
         return lead + "/".join([*kept, "…"]) + extension
 
@@ -1482,43 +1292,13 @@ class _UrlPolicy:
             shown = _show_url(url) if kind == "scheme" else self.show_path(url)
             self.problem(line, f"{where}: URL '{shown}' is not allowed")
 
-    def _allowed_link(self, line: int, where: str, url: str) -> bool:
-        """A root-absolute link under a directory of `allow_paths`: allowed
-        when its path is plain, never looked up.  True when it is settled."""
-        if self._allowed_directory(url) is None:
-            return False
-        if not _is_plain_path(_url_path(url)):
-            self.problem(line, f"{where}: '{self.show_path(url)}' is not a plain absolute path")
-        return True
-
-    def check_link(self, line: int, where: str, value: str, attrs: dict) -> None:
-        """`<a href>`: a local page, a fragment, a link under a directory of
-        `allow_paths`, or a link to a map service."""
+    def check_link(self, line: int, where: str, value: str) -> None:
+        """`<a href>`: a file of the output or a fragment."""
         kind, url = _classify_url(value)
-        # before the base path: at `--base-path /` every local URL is under it
-        if kind == "local" and self.allow_paths and self._allowed_link(line, where, url):
-            return
         if self._common(line, where, kind, url, "links"):
             return
-        if kind == "external" and _is_map_link(url):
-            if (attrs.get("target") or "").strip().lower() != "_blank":
-                self.problem(
-                    line,
-                    f"{where}: external link '{_show_url(url)}' needs target=\"_blank\"",
-                )
-            rel = set((attrs.get("rel") or "").lower().split())
-            if not {"noopener", "noreferrer"} <= rel:
-                self.problem(
-                    line,
-                    f"{where}: external link '{_show_url(url)}' needs "
-                    'rel="noopener noreferrer"',
-                )
-        elif kind == "external":
-            self.problem(
-                line,
-                f"{where}: external link '{_show_url(url)}'; only https links to the "
-                "map services are allowed",
-            )
+        if kind == "external":
+            self.problem(line, f"{where}: external link '{_show_url(url)}' is not allowed")
         else:  # mailto:, tel:, data: and other schemes
             shown = _show_url(url) if kind in ("scheme", "data") else self.show_path(url)
             self.problem(line, f"{where}: link '{shown}' is not allowed")
@@ -1702,7 +1482,7 @@ class _HtmlChecker(HTMLParser):
                     policy.check_resource(line, where, url)
             elif name in _URL_ATTRIBUTES:
                 if tag in _LINK_ELEMENTS and name == "href":
-                    policy.check_link(line, where, value, values)
+                    policy.check_link(line, where, value)
                 else:
                     rel = values.get("rel", "").lower().split()
                     is_icon = tag == "link" and "icon" in rel
@@ -1763,22 +1543,11 @@ class _HtmlChecker(HTMLParser):
         self.policy.problem(self.line, "HTML comment left in the output")
 
 
-def _checked_allow_paths(
-    allow_paths: Sequence[str], base_path: str, pages: Iterable[str] = ()
-) -> tuple[str, ...]:
-    """`check_allow_paths` for the public checks: `ValueError` with a subject."""
-    try:
-        return check_allow_paths(allow_paths, base_path.rstrip("/") or "/", pages)
-    except ValueError as exc:
-        raise ValueError(f"an allowed path (allow_paths) {exc}") from None
-
-
 def check_html(
     document: str,
     exists: Callable[[str], bool],
     is_dir: Callable[[str], bool] | None = None,
     base_path: str = DEFAULT_BASE_PATH,
-    allow_paths: Sequence[str] = (),
 ) -> list[tuple[int, str]]:
     """Problems of one HTML document as (line, message) pairs.
 
@@ -1786,17 +1555,10 @@ def check_html(
     `is_dir` does the same for directories (only used to word the messages).
     The output is published under `base_path`: a local URL outside it points
     outside the output, one inside it is looked up without the base path.
-    A link (`<a href>`, `<area href>`) under one of `allow_paths` is allowed
-    when its path is plain and is not looked up; a resource there is checked
-    as any other.  `allow_paths` are checked and normalised against
-    `base_path` by `check_allow_paths` first: a value it refuses (`/`, the
-    base path, a path that leads into the output, a bad format) raises
-    `ValueError` that names the problem, never the value.
     Whatever the parser may read differently from a browser is an error;
     so is any absolute URL, `<meta>` links (`og:image`) included.
     """
-    allow_paths = _checked_allow_paths(allow_paths, base_path)
-    policy = _UrlPolicy(exists, is_dir, base_path=base_path, allow_paths=allow_paths)
+    policy = _UrlPolicy(exists, is_dir, base_path=base_path)
     leftover = _LEFTOVER_RE.search(document)
     if leftover:
         policy.problem(
@@ -1985,42 +1747,20 @@ def _scan_output(root: Path) -> tuple[dict[str, int], list[str], list[str]]:
     return files, directories, problems
 
 
-#: Directories that `assets/` may hold besides the media directory.
-ASSET_DIRECTORIES = frozenset({"fonts"})
-#: The published name of a media file: `<sha256[:16]>.<ext>`.
-_PUBLISHED_MEDIA_RE = re.compile(r"[0-9a-f]{16}\.[a-z0-9]+\Z")
-
-
-def _media_path(name: str) -> str:
-    """A file of the media directory for a message: a published name as it
-    is, any other name (it may be a name from the data) cut to its type."""
-    shown = name if _PUBLISHED_MEDIA_RE.match(name) else "…" + os.path.splitext(name)[1].lower()
-    return f"{ASSETS_DIRNAME}/<mediaDir>/{shown}"
-
-
 def _check_output_tree(
-    files: dict[str, int],
-    directories: Sequence[str],
-    pages: Iterable[str],
-    media_dir: str = "",
-    media: Collection[str] = (),
-    calendars: Collection[str] = (),
+    files: dict[str, int], directories: Sequence[str], pages: Iterable[str]
 ) -> list[str]:
-    """Allow-list of the output: only what the invitations need is published.
+    """Allow-list of the top of the output and of the directories of the pages.
 
-    `pages` are the tokens of the invitations: the top of the output holds
-    `assets/` and one directory `<token>/` per invitation with the page and
-    nothing else.  `assets/<media_dir>/` holds exactly the published names
-    `media` and the calendar files `calendars` (and does not exist without
-    them); besides it `assets/` may only hold the files of the code and the
-    directories `ASSET_DIRECTORIES`.  Paths are shown by `_output_path`.
+    `pages` are the tokens of the pages: the top of the output holds
+    `assets/` and one directory `<token>/` per page with `index.html` and
+    nothing else.  Anywhere in the output dot-files, dot-directories and the
+    types of `FORBIDDEN_OUTPUT_EXTENSIONS` are refused, and no file may be
+    larger than `MAX_FILE_BYTES`; which files `assets/` holds is checked by
+    the caller (`menu_tools._output.asset_problems`).  Paths are shown by
+    `_output_path`.
     """
     problems: list[str] = []
-    media_prefix = f"{ASSETS_DIRNAME}/{media_dir}/" if media_dir else None
-    expected_media = (
-        {f"{media_prefix}{name}" for name in (*media, *calendars)} if media_prefix else set()
-    )
-    allowed_asset_dirs = {f"{ASSETS_DIRNAME}/{name}" for name in ASSET_DIRECTORIES}
     expected_dirs = set(pages)
     expected_pages = {f"{token}/{PAGE_FILE}" for token in expected_dirs}
     page_rule = f"only {PAGE_FILE} is allowed in the directory of a page"
@@ -2034,26 +1774,10 @@ def _check_output_tree(
             if relative != ASSETS_DIRNAME and relative not in expected_dirs:
                 problems.append(
                     f"{shown}: unexpected directory at the top of the output (only "
-                    f"{ASSETS_DIRNAME}/ and one directory per invitation are allowed)"
+                    f"{ASSETS_DIRNAME}/ and one directory per page are allowed)"
                 )
         elif parts[0] != ASSETS_DIRNAME:
             problems.append(f"{shown}: unexpected directory ({page_rule})")
-        else:
-            media_path = media_prefix.rstrip("/") if media_prefix else None
-            if relative == media_path:
-                allowed = bool(expected_media)
-                shown = f"{ASSETS_DIRNAME}/<mediaDir>"
-            elif media_path and relative.startswith(media_prefix):
-                allowed, shown = False, f"{ASSETS_DIRNAME}/<mediaDir>/…"
-            else:
-                allowed = "/".join(parts[:2]) in allowed_asset_dirs
-                shown = relative
-            if not allowed:
-                problems.append(
-                    f"{shown}: unexpected directory (only "
-                    f"{', '.join(sorted(ASSET_DIRECTORIES))}/ and the media directory with "
-                    f"the media the pages show are allowed in {ASSETS_DIRNAME}/)"
-                )
 
     for relative, size in files.items():
         parts = relative.split("/")
@@ -2072,18 +1796,6 @@ def _check_output_tree(
         elif parts[0] != ASSETS_DIRNAME:
             if relative not in expected_pages:
                 problems.append(f"{shown}: unexpected file ({page_rule})")
-        elif media_prefix and relative.startswith(media_prefix):
-            if relative not in expected_media:
-                problems.append(
-                    f"{_media_path(relative[len(media_prefix):])}: unexpected file (only the "
-                    "media the pages show and the calendar files of the events are "
-                    "published, under the hash of their contents)"
-                )
-        elif extension not in ASSET_EXTENSIONS:
-            problems.append(
-                f"{shown}: file type '{extension or name}' is not allowed in "
-                f"{ASSETS_DIRNAME}/ (allowed: {_extension_list(ASSET_EXTENSIONS)})"
-            )
         if size > MAX_FILE_BYTES:
             problems.append(
                 f"{shown}: {format_size(size)} is larger than the limit of "
@@ -2093,34 +1805,21 @@ def _check_output_tree(
     for relative in sorted(expected_pages):
         if relative not in files:
             problems.append(f"{_output_path(relative)}: missing from the output")
-    for relative in sorted(expected_media):
-        if relative not in files:
-            problems.append(f"{_media_path(relative[len(media_prefix):])}: missing from the output")
     return problems
 
 
 def check_output(
-    out_dir: Path | str,
-    pages: Iterable[str],
-    media_dir: str = "",
-    media: Collection[str] = (),
-    calendars: Collection[str] = (),
-    base_path: str = DEFAULT_BASE_PATH,
-    allow_paths: Sequence[str] = (),
+    out_dir: Path | str, pages: Iterable[str], base_path: str = DEFAULT_BASE_PATH
 ) -> OutputStats:
     """Check a finished output directory; raises `OutputError` with every problem.
 
-    * only the expected files are present (see `_check_output_tree`: `pages`
-      are the tokens, `media` and `calendars` the published names in the
-      media directory), none of them larger than `MAX_FILE_BYTES`;
-    * HTML: no template syntax or comments left, no external resources, no
-      inline scripts or event handlers, no embedded documents; external links
-      only to the map services and with `target`/`rel`; every local URL
-      lies under `base_path`, the path the output is published under, and
-      resolves to a file of the output - but a link under one of
-      `allow_paths`, which is not looked up (see `check_html`; the values are
-      checked by `check_allow_paths` against `base_path` and the pages first,
-      a refused one raises `ValueError` before anything is read);
+    * only the expected entries are present (see `_check_output_tree`:
+      `pages` are the tokens), none of them larger than `MAX_FILE_BYTES`;
+    * HTML: no template syntax or comments left, no external resources or
+      links, no inline scripts or event handlers, no embedded documents;
+      every local URL lies under `base_path`, the path the output is
+      published under, and resolves to a file of the output (see
+      `check_html`);
     * CSS: `url()` and `@import` point at local files that exist (relative
       URLs of a CSS file are resolved against that file, root-absolute ones
       must lie under `base_path`); no CSS escapes that could hide a URL;
@@ -2131,7 +1830,6 @@ def check_output(
     shown as `…` (`_output_path`): they are named after the tokens.
     """
     pages = list(pages)
-    allow_paths = _checked_allow_paths(allow_paths, base_path, pages)
     root = Path(out_dir)
     try:
         files, directories, problems = _scan_output(root)
@@ -2139,7 +1837,7 @@ def check_output(
         raise BuildError(
             f"cannot read the output directory {display_path(root)}: {exc.strerror}"
         ) from None
-    problems += _check_output_tree(files, directories, pages, media_dir, media, calendars)
+    problems += _check_output_tree(files, directories, pages)
 
     # only the directories of the shared files may be named in a message: the
     # rest are the directories of the pages
@@ -2164,9 +1862,7 @@ def check_output(
         except OSError as exc:
             raise BuildError(f"cannot read {shown}: {exc.strerror}") from None
         if extension == ".html":
-            file_problems = check_html(
-                text, files.__contains__, known_dirs.__contains__, base_path, allow_paths
-            )
+            file_problems = check_html(text, files.__contains__, known_dirs.__contains__, base_path)
         elif extension == ".css":
             file_problems = check_stylesheet(
                 text, files.__contains__, known_dirs.__contains__,
@@ -2285,34 +1981,31 @@ def check_out_dir(
     *,
     code_dir: Path | str,
     data_dir: Path | str,
-    media_dir: Path | str,
 ) -> None:
     """Refuse output directories whose replacement would destroy anything.
 
-    The build replaces `--out` completely, so it must not be the code, data or
-    media directory (or a parent of one), the working directory (or a parent of
+    The build replaces `--out` completely, so it must not be the code or data
+    directory (or a parent of one), the working directory (or a parent of
     it), the home directory, the file system root, or a directory inside the
-    trees that are copied into the output.  An existing directory is replaced
-    only when it is empty or looks like the output of a previous build.
+    tree that is copied into the output (`assets/` of the code).  An existing
+    directory is replaced only when it is empty or looks like the output of a
+    previous build.
 
     The messages call the directory `--out` and never repeat its path nor
     the name of anything in it: it may point inside a previous build by
     mistake, at the directory of a page, and the data is not read yet, so no
     token is known to hide.  An error of the file system is reported by its
     reason alone, without the file it happened on.
-
-    Extension point: later build steps may pass further protected directories
-    through the same checks.
     """
     try:
-        _check_out_dir(Path(out_dir), Path(code_dir), Path(data_dir), Path(media_dir))
+        _check_out_dir(Path(out_dir), Path(code_dir), Path(data_dir))
     except OSError as exc:
         raise BuildError(
             f"cannot inspect --out: {exc.strerror or type(exc).__name__}"
         ) from None
 
 
-def _check_out_dir(out_dir: Path, code_dir: Path, data_dir: Path, media_dir: Path) -> None:
+def _check_out_dir(out_dir: Path, code_dir: Path, data_dir: Path) -> None:
     out = Path(out_dir).absolute()
     resolved = Path(os.path.realpath(out))
 
@@ -2330,7 +2023,6 @@ def _check_out_dir(out_dir: Path, code_dir: Path, data_dir: Path, media_dir: Pat
     protected = {
         "code": Path(code_dir),
         "data": Path(data_dir),
-        "media": Path(media_dir),
         "working": Path.cwd(),
     }
     for label, path in protected.items():
@@ -2343,18 +2035,13 @@ def _check_out_dir(out_dir: Path, code_dir: Path, data_dir: Path, media_dir: Pat
                     "choose a separate output directory"
                 )
 
-    inside = {
-        "media": Path(media_dir),
-        "assets": Path(code_dir) / ASSETS_DIRNAME,
-    }
-    for label, path in inside.items():
-        target = Path(os.path.realpath(path.absolute()))
-        if _is_within(resolved, target):
-            relation = "the" if _same_path(resolved, target) else "inside the"
-            raise BuildError(
-                f"--out must not be {relation} {label} directory; "
-                "choose a separate output directory"
-            )
+    assets = Path(os.path.realpath((Path(code_dir) / ASSETS_DIRNAME).absolute()))
+    if _is_within(resolved, assets):
+        relation = "the" if _same_path(resolved, assets) else "inside the"
+        raise BuildError(
+            f"--out must not be {relation} assets directory; "
+            "choose a separate output directory"
+        )
 
     if out.is_symlink():
         raise BuildError("--out must not be a symbolic link; point --out at the real directory")
@@ -2411,30 +2098,18 @@ def _count_entries(entries: Sequence[os.DirEntry]) -> str:
     return " and ".join(parts)
 
 
-def _holds_pages(entry: os.DirEntry) -> bool:
-    """A real directory with a directory of a page inside: the pages one
-    level below the top, as the build laid them out while it wrote the site."""
-    if not entry.is_dir(follow_symlinks=False):
-        return False
-    inside = _directory_entries(entry.path)
-    return inside is not None and any(_is_page_directory(item) for item in inside.values())
-
-
 def check_replaceable(out_dir: Path | str) -> None:
     """Allow replacing an existing directory only if it is a previous build.
 
     A directory qualifies when it is empty or holds what a build writes:
     `assets/`, a real directory with `app.css` and `app.js` (every build
-    writes them), and the directories of the pages, if any (a build of no
-    invitation has none) - real directories named like a token with
-    `index.html` (a regular file) alone; nothing else (files created by the
-    operating system are ignored).  No marker file is written into the
-    output: its contents stay limited to what the pages need.  Anything else
-    is somebody's directory and is never replaced: pages without `assets/`
-    (the pages directory of a whole site), `assets/` without `app.css` and
-    `app.js`, a site of the old layout (`index.html`, `404.html`, `_headers`
-    or `robots.txt` at the top, the pages one directory deeper), the
-    directory of a single page.
+    writes them), and the directories of the pages - real directories named
+    like a token with `index.html` (a regular file) alone; nothing else
+    (files created by the operating system are ignored).  No marker file is
+    written into the output: its contents stay limited to what the pages
+    need.  Anything else is somebody's directory and is never replaced:
+    pages without `assets/`, `assets/` without `app.css` and `app.js`, any
+    other entry at the top, the directory of a single page.
 
     The messages never repeat the path of `--out` nor the name of anything
     in it - at most they count the entries: the data is not read yet, so no
@@ -2469,15 +2144,6 @@ def _check_replaceable(out: Path) -> None:
             f"--out at the directory with the pages and {ASSETS_DIRNAME}/"
         )
     others = [entry for entry in entries if entry.name != ASSETS_DIRNAME]
-    if OLD_LAYOUT_FILES.intersection(names) or any(
-        not _is_page_directory(entry) and _holds_pages(entry) for entry in others
-    ):
-        raise BuildError(
-            f"{refuse}: it looks like a whole site (index.html, 404.html, _headers or "
-            "robots.txt at the top, or the pages one directory deeper); the build now "
-            "writes the invitations only, straight into --out - remove the directory or "
-            "choose another --out (e.g. a directory inside the site, see README 5)"
-        )
     unexpected = [
         entry
         for entry in others
@@ -2519,9 +2185,9 @@ class _StagedOutput:
     before the next one starts, and a failure to remove them is reported.
     """
 
-    def __init__(self, out_dir: Path, warn: Callable[[str], None] | None = None):
+    def __init__(self, out_dir: Path, warn: Callable[[str], None]):
         self.out = Path(out_dir).absolute()
-        self.warn = warn if warn is not None else (lambda _message: None)
+        self.warn = warn
         self.stage = self.out.parent / f".{self.out.name}.tmp-{secrets.token_hex(6)}"
         self._stale_re = re.compile(
             rf"\.{re.escape(self.out.name)}\.(?:tmp|old)-[0-9a-f]{{12}}\Z"
@@ -2580,17 +2246,12 @@ class _StagedOutput:
             self._discard(previous)
 
 
-def copy_assets(
-    source: Path,
-    destination: Path,
-    ignore: Callable[[str], bool] | None = None,
-) -> int:
+def copy_assets(source: Path, destination: Path) -> int:
     """Copy `assets/` into the output; returns the number of files.
 
-    Dot-files and dot-directories are skipped.  `ignore` receives the path of a
-    file or directory relative to `source` (with '/') and returns True for
-    entries that must not reach the output.  Symbolic links are an error (they
-    are never followed), and directories that end up empty are not created.
+    Dot-files and dot-directories are skipped.  Symbolic links are an error
+    (they are never followed), and directories that end up empty are not
+    created.
     """
     source = Path(source)
     if source.is_symlink():
@@ -2604,8 +2265,7 @@ def copy_assets(
         skipped: set[str] = set()
         for name in names:
             path = os.path.join(directory, name)
-            relative = os.path.relpath(path, source).replace(os.sep, "/")
-            if name.startswith(".") or (ignore is not None and ignore(relative)):
+            if name.startswith("."):
                 skipped.add(name)
                 continue
             mode = os.lstat(path).st_mode
@@ -2759,11 +2419,10 @@ def token_prefix(value: str) -> str:
 CI_ENVIRONMENT_VARIABLES = ("CI", "GITHUB_ACTIONS")
 
 
-def running_in_ci(environ: Any = None) -> bool:
+def running_in_ci() -> bool:
     """True when `CI` or `GITHUB_ACTIONS` is set (and is not empty, 0 or false)."""
-    environ = os.environ if environ is None else environ
     return any(
-        environ.get(name, "").strip().lower() not in ("", "0", "false")
+        os.environ.get(name, "").strip().lower() not in ("", "0", "false")
         for name in CI_ENVIRONMENT_VARIABLES
     )
 
@@ -2801,7 +2460,7 @@ def parse_published_url(value: str) -> str:
         # the value itself is never repeated: it may carry credentials
         raise argparse.ArgumentTypeError(
             "expected the address where the output directory is published, e.g. "
-            "https://example.org/invite (http or https, no user information, query "
+            "https://example.org/menu (http or https, no user information, query "
             "string or fragment)"
         )
     return value.rstrip("/")
