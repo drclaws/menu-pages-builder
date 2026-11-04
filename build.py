@@ -296,7 +296,7 @@ def check_out(out_dir: Path, data_dir: Path) -> None:
             "--out must not lie inside the data directory (--data): the build never writes "
             "there; choose a separate output directory"
         )
-    _core.check_out_dir(out_dir, code_dir=CODE_DIR, data_dir=data_dir, media_dir=data_dir)
+    _core.check_out_dir(out_dir, code_dir=CODE_DIR, data_dir=data_dir)
 
 
 def load_palette() -> Any:

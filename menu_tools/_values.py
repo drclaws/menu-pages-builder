@@ -5,7 +5,7 @@
   silently keeps the last value only, and the rest of the data is lost.
 - `format_path` writes a field path: `sections[3].widgets[1].location`.
 - `did_you_mean` suggests the closest of the known names.
-- `is_identifier`, `show_id`, `identifier_problem`: the rule for ids.
+- `is_identifier`, `show_id`: the rule for ids.
 - Tokens and sizes: `check_token`, `generate_token`,
   `generate_prefixed_token`, `json_type` and `format_size`.
 
@@ -28,7 +28,7 @@ import json
 import math
 import re
 import secrets
-from typing import Any, Callable, Collection, Iterable, Mapping, NamedTuple, Sequence, Union
+from typing import Any, Callable, Collection, Iterable, Mapping, NamedTuple, Union
 
 #: One step of a field path: the key of an object or an index in an array.
 PathPart = Union[str, int]
@@ -223,13 +223,6 @@ def show_id(value: Any) -> str:
     return f"'{value}'" if is_identifier(value) else "(not a valid identifier)"
 
 
-def identifier_problem(value: Any, path: Sequence[PathPart]) -> str | None:
-    """The message for a field that must hold an id, or None when it does."""
-    if is_identifier(value):
-        return None
-    return f"field '{format_path(path)}' must be an identifier: {ID_RULE}"
-
-
 # --------------------------------------------------------------------------
 # JSON types and sizes
 # --------------------------------------------------------------------------
@@ -281,7 +274,7 @@ TOKEN_SUFFIX_LENGTH = 4
 #: Lower case letters and digits without the ones that are easy to confuse
 #: (0/o, 1/l/i): the tail is read and typed by people.
 TOKEN_SUFFIX_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz"
-#: Tokens and `mediaDir` become directory names, so their length is capped well
+#: Tokens become directory names, so their length is capped well
 #: below the file name limit of common file systems (255 bytes).
 MAX_NAME_LENGTH = 200
 
@@ -357,15 +350,3 @@ def generate_prefixed_token(prefix: str) -> str:
         raise ValueError(problem)
     tail = "".join(secrets.choice(TOKEN_SUFFIX_ALPHABET) for _ in range(TOKEN_SUFFIX_LENGTH))
     return f"{prefix}-{tail}"
-
-
-# --------------------------------------------------------------------------
-# Media file names
-# --------------------------------------------------------------------------
-
-#: Media files the data may refer to, by role.
-IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".webp", ".avif", ".gif", ".svg"})
-
-
-def _extension_list(extensions: Iterable[str]) -> str:
-    return ", ".join(sorted(extensions))

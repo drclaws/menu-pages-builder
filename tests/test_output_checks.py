@@ -219,6 +219,10 @@ class OutputChecksTest(support.TempDirTestCase):
                  f"…/index.html line {BODY_LINE}: <area href> {_output.LINK_RULE}"]),
             "an area without href": ('<map name="m"><area shape="rect" coords="0,0,1,1" alt=""></map>',
                                      [f"…/index.html line {BODY_LINE}: <area href> {_output.LINK_RULE}"]),
+            "an address on another host": (
+                '<a href="https://maps.example.org/nowhere" target="_blank" rel="noopener noreferrer">Map</a>',
+                [f"…/index.html line {BODY_LINE}: <a href>: external link 'https://maps.example.org/…' "
+                 "is not allowed", not_a_part]),
         }
         for name, (body, expected) in cases.items():
             with self.subTest(case=name):

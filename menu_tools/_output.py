@@ -293,7 +293,7 @@ def check_menu_output(
     hidden = 0
     stats = None
     try:
-        stats = _core.check_output(out_dir, pages, media_dir="", base_path=base_path)
+        stats = _core.check_output(out_dir, pages, base_path=base_path)
     except _core.OutputError as exc:
         problems = list(exc.errors)
         more = _MORE_RE.match(problems[-1]) if problems else None

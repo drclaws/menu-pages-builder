@@ -11,23 +11,7 @@ Standard library only.
 
 from __future__ import annotations
 
-from menu_tools._tokens import Palette, TokenError, hex_color, load_palette
-
-
-FAVICON_FILE = "favicon.svg"
-OG_FILE = "og.png"
-OG_SIZE = (1200, 630)
-
-__all__ = [
-    "FAVICON_FILE",
-    "OG_FILE",
-    "OG_SIZE",
-    "Palette",
-    "TokenError",
-    "favicon_svg",
-    "hex_color",
-    "load_palette",
-]
+from menu_tools._tokens import Palette, hex_color
 
 
 def favicon_svg(palette: Palette) -> bytes:

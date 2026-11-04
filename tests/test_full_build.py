@@ -209,6 +209,25 @@ class RefusalTest(BuildTestCase):
         self.assertEqual((out / "notes.txt").read_text(encoding="utf-8"), "keep me")
         self.assertEqual(self.leftovers(out), [])
 
+    def test_more_than_a_build_writes_next_to_its_assets(self):
+        # assets/ as a build writes it, an index page at the top and pages one
+        # directory deeper: not a previous build
+        out = self.tmp / "mine"
+        (out / "assets").mkdir(parents=True)
+        for name in ("app.css", "app.js"):
+            (out / "assets" / name).write_text("x", encoding="utf-8")
+        (out / "index.html").write_text("keep me", encoding="utf-8")
+        (out / "pages" / "heron-4tx9").mkdir(parents=True)
+        (out / "pages" / "heron-4tx9" / "index.html").write_text("keep me", encoding="utf-8")
+        self.refused(
+            out,
+            "refusing to replace --out: it does not look like a previous build output (unexpected at "
+            "the top: 1 directory and 1 other entry; their names are not shown, they may be tokens); "
+            "remove it manually or choose another --out",
+        )
+        self.assertEqual((out / "index.html").read_text(encoding="utf-8"), "keep me")
+        self.assertEqual(self.leftovers(out), [])
+
 
 class FailingBuildTest(BuildTestCase):
     def setUp(self):
