@@ -345,7 +345,7 @@ class FailingBuildTest(BuildTestCase):
                 self.assertEqual(len(lines), 3, lines)
                 self.assertRegex(lines[0], rf"^error: 13 files: <a href>: '/…' {words}; first: …/index\.html line \d+$")
                 self.assertRegex(lines[1], r"^error: 13 files: <a href> must lead to a part of the same page "
-                                           r"\('#' and the id of an element of the page\); first: …/index\.html "
+                                           r"\('#' and the id of an element on it\); first: …/index\.html "
                                            r"line \d+$")
                 self.assertEqual(lines[2], "build: failed with 2 error(s)")
                 self.assert_quiet_about(result, self.menu, self.guests)
@@ -409,8 +409,8 @@ class FailingBuildTest(BuildTestCase):
                     self.assertEqual(result.returncode, 1)
                     self.assertEqual(result.stdout.splitlines(), [
                         f"build: 12 guest record(s) + staff validated (data: {_core.display_path(data)})"])
-                    self.assertEqual(result.stderr, f"error: {problem}; a token is only the name of the "
-                                                    "directory of its page\nbuild: failed with 1 error(s)\n")
+                    self.assertEqual(result.stderr, f"error: {problem}; a token is only the name of its "
+                                                    "page directory\nbuild: failed with 1 error(s)\n")
                     self.assert_quiet_about(result, menu, guests)
                 self.assertFalse(fresh.exists())
                 self.assertEqual(self.leftovers(fresh), [])
@@ -440,7 +440,7 @@ class FailingBuildTest(BuildTestCase):
             result = self.build(self.data, self.out)
         self.assertEqual(
             result.stderr,
-            "error: assets/Favicon.svg of the code collides with the icon that the build generates from "
+            "error: assets/Favicon.svg in the code collides with the icon that the build generates from "
             "the design tokens; remove it\nbuild: failed\n",
         )
         self.assert_kept()
@@ -468,8 +468,8 @@ class FailingBuildTest(BuildTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(
             result.stderr,
-            "error: assets/app.css: design token '--color-surface' is not defined on :root (the colour of "
-            "the browser interface and the icon are taken from the design tokens)\nbuild: failed\n",
+            "error: assets/app.css: design token '--color-surface' is not defined on :root (the browser "
+            "interface colour and the icon come from the design tokens)\nbuild: failed\n",
         )
         self.assert_kept()
 

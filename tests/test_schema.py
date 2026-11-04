@@ -101,7 +101,7 @@ def _(menu, guests):
 
 @case(
     "unsupported_version",
-    errors=[M + "field 'schemaVersion' is 2 - not supported: this version of the menu reads version 1 only"],
+    errors=[M + "field 'schemaVersion' is 2 - not supported: this builder reads version 1 only"],
 )
 def _(menu, guests):
     menu["schemaVersion"] = 2
@@ -221,7 +221,7 @@ def _(menu, guests):
 
 @case(
     "template_syntax_in_a_dish_name",
-    errors=[M + "field 'dishes.hummus.name' must not contain '{{' or '}}' (the texts of the menu have no template syntax)"],
+    errors=[M + "field 'dishes.hummus.name' must not contain '{{' or '}}' (menu texts have no template syntax)"],
 )
 def _(menu, guests):
     menu["dishes"]["hummus"]["name"] = "Hummus {{ name }}"
@@ -229,7 +229,7 @@ def _(menu, guests):
 
 @case(
     "token_in_a_text",
-    errors=[M + "field 'sections[3].widgets[1].text' must not contain '{token}': the pages of the menu hold no token"],
+    errors=[M + "field 'sections[3].widgets[1].text' must not contain '{token}': menu pages hold no token"],
 )
 def _(menu, guests):
     menu["sections"][3]["widgets"][1]["text"] = "Your page: {token}"
@@ -237,7 +237,7 @@ def _(menu, guests):
 
 @case(
     "token_in_a_staff_text",
-    errors=[M + "field 'staff.reminder' must not contain '{token}': the pages of the menu hold no token"],
+    errors=[M + "field 'staff.reminder' must not contain '{token}': menu pages hold no token"],
 )
 def _(menu, guests):
     menu["staff"]["reminder"] = "The staff page is /menu/{token}/"
@@ -405,7 +405,7 @@ def _(menu, guests):
 
 
 @case("token_in_a_heading", base="parts",
-      errors=[M + "field 'sections[4].widgets[0].title' must not contain '{token}': the pages of the menu hold no token"])
+      errors=[M + "field 'sections[4].widgets[0].title' must not contain '{token}': menu pages hold no token"])
 def _(menu, guests):
     info(menu)[0]["title"] = "Smoking {token}"
 
@@ -440,7 +440,7 @@ def _(menu, guests):
 
 @case("empty_label", base="parts", errors=[
     M + "field 'sections[2].nav' must not be empty: leave the field out for a section without a link in the "
-    "line of the sections"])
+    "navigation bar"])
 def _(menu, guests):
     menu["sections"][2]["nav"] = " "
 
@@ -457,7 +457,7 @@ def _(menu, guests):
 
 
 @case("label_repeated", base="parts", warnings=[
-    M + "field 'sections[4].nav' repeats the label of sections[2] in the line of the sections (letter case aside)"])
+    M + "field 'sections[4].nav' repeats the label of sections[2] in the navigation bar (letter case aside)"])
 def _(menu, guests):
     menu["sections"][4]["nav"] = " FOOD"
 
@@ -500,8 +500,8 @@ def _(menu, guests):
 @case(
     "more_seats_than_colours",
     base="mockup16",
-    errors=[G(1) + "field 'seats' lists 4 seats, at most 3 are allowed: the page of a guest marks each seat "
-            "of the record in a colour of its own (split the record in two)"],
+    errors=[G(1) + "field 'seats' lists 4 seats, at most 3 are allowed: a guest page marks each of the "
+            "record's seats in a colour of its own (split the record in two)"],
 )
 def _(menu, guests):
     record(guests, "Olga")["seats"] += [{"number": 12, "name": "Hugo"}, {"number": 13, "name": "Oscar"}]
@@ -605,8 +605,8 @@ def _(menu, guests):
 @case(
     "reserved_token",
     errors=[
-        G(4) + "'token' is a reserved name: the directory of the page would be the directory of the files the "
-        "pages share (letter case aside); choose another token"
+        G(4) + "'token' is a reserved name: its page directory would be the shared-files directory "
+        "(letter case aside); choose another token"
     ],
 )
 def _(menu, guests):
@@ -861,7 +861,7 @@ class FixturesTest(unittest.TestCase):
         # the same label once in a lower and once in an upper case: one warning
         menu["sections"][-1]["nav"] = "kitchen"
         self.assertEqual(full_check(menu, guests), ([], [
-            M + "field 'sections[6].nav' repeats the label of sections[4] in the line of the sections "
+            M + "field 'sections[6].nav' repeats the label of sections[4] in the navigation bar "
             "(letter case aside)"]))
 
 

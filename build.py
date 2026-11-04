@@ -77,7 +77,7 @@ FAVICON_FILE = "favicon.svg"
 
 #: The commands and their one-line descriptions.
 COMMANDS = {
-    "build": "build the pages of the guests and the staff page",
+    "build": "build the guest pages and the staff page",
     "validate": "check the data without writing anything",
     "links": "print the address of every page (personal data: for local use only)",
     "token": "print a new token for a record",
@@ -128,8 +128,8 @@ def make_parser() -> argparse.ArgumentParser:
         "--base-path",
         metavar="PATH",
         type=_base_path_type,
-        help="path from the root of the site under which the contents of --out are published, "
-        "e.g. /menu: every URL of the output starts with it, a page is PATH/<token>/ and a "
+        help="path from the site root under which the contents of --out are published, "
+        "e.g. /menu: every URL in the output starts with it, a page is PATH/<token>/, and a "
         f"local address outside PATH is an error (default: {DEFAULT_BASE_PATH})",
     )
 
@@ -139,17 +139,17 @@ def make_parser() -> argparse.ArgumentParser:
     links = commands.add_parser(
         "links",
         help=COMMANDS["links"],
-        description="Print the address of every page for sending by hand: the name of each guest "
-        "record, a tab and URL/<token>/, the staff page last. The lines hold personal data and the "
-        "secret addresses: the command is for local use only and refuses to run in CI.",
+        description="Print every page address for sending by hand: each guest record's name, a "
+        "tab and URL/<token>/, with the staff page last. The lines hold personal data and the "
+        "secret addresses, so the command is for local use only and refuses to run in CI.",
     )
     links.add_argument(
         "--url",
         metavar="URL",
         required=True,
         type=_url_type,
-        help="address where the output directory of the build is published, e.g. "
-        "https://example.org/menu; the links are URL/<token>/",
+        help="address where the build output is published, e.g. https://example.org/menu; "
+        "the links are URL/<token>/",
     )
     add_data_option(links)
 
@@ -301,15 +301,15 @@ def load_palette() -> Any:
         taken = []  # reported when the assets are copied
     if taken:
         raise _core.BuildError(
-            f"{ASSETS_DIR}/{taken[0]} of the code collides with the icon that the build "
+            f"{ASSETS_DIR}/{taken[0]} in the code collides with the icon that the build "
             "generates from the design tokens; remove it"
         )
     try:
         return _core.load_palette(assets / TOKENS_FILE)
     except _core.TokenError as exc:
         raise _core.BuildError(
-            f"{ASSETS_DIR}/{exc} (the colour of the browser interface and the icon are "
-            "taken from the design tokens)"
+            f"{ASSETS_DIR}/{exc} (the browser interface colour and the icon come from the "
+            "design tokens)"
         ) from None
 
 

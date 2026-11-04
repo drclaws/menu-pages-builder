@@ -307,8 +307,8 @@ def check_token(token: Any) -> str | None:
         )
     if token.lower() in RESERVED_TOKENS:
         return (
-            "'token' is a reserved name: the directory of the page would be the directory "
-            "of the files the pages share (letter case aside); choose another token"
+            "'token' is a reserved name: its page directory would be the shared-files "
+            "directory (letter case aside); choose another token"
         )
     return None
 

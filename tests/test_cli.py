@@ -322,8 +322,8 @@ class ValidateTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(
             result.stderr.splitlines()[-2:],
-            ["error: guests.json: guest #1: field 'seats' lists 4 seats, at most 3 are allowed: the page of a "
-             "guest marks each seat of the record in a colour of its own (split the record in two)",
+            ["error: guests.json: guest #1: field 'seats' lists 4 seats, at most 3 are allowed: a guest page "
+             "marks each of the record's seats in a colour of its own (split the record in two)",
              "validate: failed with 1 error(s)"],
         )
         self.assertNotIn("Lev", result.stderr)

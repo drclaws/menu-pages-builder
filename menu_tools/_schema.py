@@ -108,8 +108,8 @@ WIDGET_STAFF_FIELDS = {
 }
 #: Nothing of a section stands under such a heading on any page.
 _EMPTY_HEADING = "nothing stands under the heading"
-#: What a section without `nav` is.
-_NO_LABEL = "leave the field out for a section without a link in the line of the sections"
+#: The hint for a section that should have no link.
+_NO_LABEL = "leave the field out for a section without a link in the navigation bar"
 TEXT_VARIANTS = ("body", "lead", "card", "signature")
 GROUP_FIELDS = ("title", "layout", "items")
 GROUP_LAYOUTS = ("list", "inline")
@@ -246,10 +246,10 @@ def _braces(check: _Checker, value: Any, where: Sequence) -> bool:
     if not isinstance(value, str):
         return True
     if "{{" in value or "}}" in value:
-        check.error(where, "must not contain '{{' or '}}' (the texts of the menu have no template syntax)")
+        check.error(where, "must not contain '{{' or '}}' (menu texts have no template syntax)")
         return False
     if TOKEN_PLACEHOLDER in value:
-        check.error(where, "must not contain '{token}': the pages of the menu hold no token")
+        check.error(where, "must not contain '{token}': menu pages hold no token")
         return False
     return True
 
@@ -399,7 +399,7 @@ def _check_version(check: _Checker, menu: dict) -> bool:
         shown = f" {version}" if isinstance(version, int) and not isinstance(version, bool) else f" {json_type(version)}"
         check.error(
             ("schemaVersion",),
-            f"is{shown} - not supported: this version of the menu reads version {SCHEMA_VERSION} only",
+            f"is{shown} - not supported: this builder reads version {SCHEMA_VERSION} only",
         )
         return False
     return True
@@ -730,7 +730,7 @@ def _check_sections(check: _Checker, menu: dict, index: MenuIndex) -> None:
             if key in labels:
                 check.warning(
                     (*parts, "nav"),
-                    f"repeats the label of sections[{labels[key]}] in the line of the sections (letter case aside)",
+                    f"repeats the label of sections[{labels[key]}] in the navigation bar (letter case aside)",
                 )
             else:
                 labels[key] = position
@@ -987,8 +987,8 @@ def _check_seats(check: _Checker, record: dict, number: int, index: MenuIndex, m
     if len(seats) > colours:
         check.error(
             ("seats",),
-            f"lists {len(seats)} seats, at most {colours} are allowed: the page of a guest marks each seat "
-            "of the record in a colour of its own (split the record in two)",
+            f"lists {len(seats)} seats, at most {colours} are allowed: a guest page marks each of the "
+            "record's seats in a colour of its own (split the record in two)",
         )
     label = guest_label(number)
     own: dict[int, int] = {}  # seat -> position in this record

@@ -44,11 +44,11 @@ ASSET_FILES = ("app.css", "app.js", "favicon.svg")
 
 STYLE_PROBLEM = "the attribute 'style' is not allowed (the styles live in assets/app.css)"
 ASSETS_RULE = f"only {', '.join(ASSET_FILES[:-1])} and {ASSET_FILES[-1]} are published in {ASSETS_DIR}/"
-TOKEN_RULE = "a token is only the name of the directory of its page"
+TOKEN_RULE = "a token is only the name of its page directory"
 #: The elements whose `href` is a link a reader follows.
 LINK_TAGS = ("a", "area")
 #: A link with no `href`, or one that is not a fragment of the page.
-LINK_RULE = "must lead to a part of the same page ('#' and the id of an element of the page)"
+LINK_RULE = "must lead to a part of the same page ('#' and the id of an element on it)"
 #: A fragment that is empty or names no id of the page.
 LINK_TARGET_PROBLEM = "names no element of the page"
 

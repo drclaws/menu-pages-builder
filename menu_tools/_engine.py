@@ -540,7 +540,7 @@ def parse_template(
 
 
 def check_rendered(output: str, name: str = "template") -> None:
-    """Fail if the rendered page still contains template syntax."""
+    """Fail if the rendered page contains leftover template syntax."""
     problems: list[str] = []
     newlines = [m.start() for m in re.finditer("\n", output)]
     for match in _LEFTOVER_RE.finditer(output):
@@ -550,7 +550,7 @@ def check_rendered(output: str, name: str = "template") -> None:
             break
     if problems:
         raise TemplateError(
-            "rendered output still contains template syntax: " + "; ".join(problems), None, name
+            "rendered output contains leftover template syntax: " + "; ".join(problems), None, name
         )
 
 

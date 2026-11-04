@@ -201,8 +201,8 @@ class GuestSeatsTest(unittest.TestCase):
         report = _core.Report()
         _schema.check_data(menu, guests, report)
         self.assertEqual(report.errors, [
-            "guests.json: guest #1: field 'seats' lists 4 seats, at most 3 are allowed: the page of a guest "
-            "marks each seat of the record in a colour of its own (split the record in two)"])
+            "guests.json: guest #1: field 'seats' lists 4 seats, at most 3 are allowed: a guest page marks "
+            "each of the record's seats in a colour of its own (split the record in two)"])
 
     def test_companions_with_and_without_a_name(self):
         menu, guests = fixtures.mockup16()

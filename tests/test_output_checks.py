@@ -190,7 +190,7 @@ class OutputChecksTest(support.TempDirTestCase):
 
     def test_a_link_to_a_part_of_the_same_page_passes(self):
         self.assertEqual(_output.LINK_RULE,
-                         "must lead to a part of the same page ('#' and the id of an element of the page)")
+                         "must lead to a part of the same page ('#' and the id of an element on it)")
         bodies = {
             "the target after the link": '<a href="#s-food">Food</a>\n<section id="s-food"></section>',
             "the target before the link": '<h2 id="top">Menu</h2>\n<a href="#top">Top</a>',
@@ -248,8 +248,8 @@ class OutputChecksTest(support.TempDirTestCase):
                          [(3, f"<a href> {_output.LINK_TARGET_PROBLEM}")])
 
     def test_no_file_holds_a_token(self):
-        self.assertEqual(_output.TOKEN_RULE, "a token is only the name of the directory of its page")
-        # the own token on its page, another one in upper case, the staff token in the style sheet
+        self.assertEqual(_output.TOKEN_RULE, "a token is only the name of its page directory")
+        # a page's own token, another one in upper case, the staff token in the style sheet
         out = self.make_output(bodies={TOKENS[0]: f"<p>{TOKENS[0]}</p>", TOKENS[2]: f"<p>{TOKENS[1].upper()}</p>"})
         with open(out / "assets" / "app.css", "a", encoding="utf-8") as handle:
             handle.write(f"/* {TOKENS[2].lower()} */\n")
