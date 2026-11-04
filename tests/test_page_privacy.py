@@ -394,7 +394,7 @@ class StringsTest(unittest.TestCase):
                         if override.get("note"):
                             self.assertNotIn(override["note"], text)
                 for person in fixtures.names(guests, menu):
-                    if person not in ("Peggy and Victor",):  # a record for two: its seats are named
+                    if person not in fixtures.RECORDS_FOR_TWO:  # its seats are named
                         self.assertIn(person, text)
 
 

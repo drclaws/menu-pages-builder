@@ -752,6 +752,31 @@ def _(menu, guests):
     menu["lang"] = ""
 
 
+@case(
+    "words_missing_for_another_language",
+    base="serbian",
+    errors=[M + "field 'strings' must give every key for 'sr-Latn' (the built-in words are English); "
+                "missing: and, guestCount, you"],
+)
+def _(menu, guests):
+    for key in ("you", "and", "guestCount"):
+        del menu["strings"][key]
+
+
+@case(
+    "another_language_without_words",
+    errors=[M + "field 'strings' must give every key for 'de' (the built-in words are English); missing: "
+                + ", ".join(sorted(fixtures.SERBIAN_STRINGS))],
+)
+def _(menu, guests):
+    menu["lang"] = "de"
+
+
+@case("words_of_the_wrong_type", base="serbian", errors=[M + "field 'strings' must be an object, got an array"])
+def _(menu, guests):
+    menu["strings"] = list(menu["strings"])
+
+
 @case("misspelt_word", errors=[M + "unknown field 'strings.sectoins' (did you mean 'sections'?)"])
 def _(menu, guests):
     menu["strings"] = {"sectoins": "Parts"}
@@ -786,6 +811,24 @@ def _(menu, guests):
     menu["strings"] = {"tablePlan": "{tabel} {table}: {seats}. {yours}: {colours}"}
 
 
+@case(
+    "plural_form_missing",
+    base="serbian",
+    errors=[M + "field 'strings.guestCount.few' is required: 'sr' uses the forms one, few, other"],
+)
+def _(menu, guests):
+    del menu["strings"]["guestCount"]["few"]
+
+
+@case(
+    "plural_form_the_language_does_not_use",
+    base="serbian",
+    errors=[M + "field 'strings.noteCount.many' is not a form 'sr' uses (one, few, other)"],
+)
+def _(menu, guests):
+    menu["strings"]["noteCount"]["many"] = "{n} napomena"
+
+
 @case("plural_form_without_the_number", errors=[M + "field 'strings.seatCount.one' must contain the placeholder {n}"])
 def _(menu, guests):
     menu["strings"] = {"seatCount": {"one": "one seat", "other": "{n} seats"}}
@@ -804,6 +847,23 @@ def _(menu, guests):
 @case("empty_colour_name", errors=[M + "field 'strings.seatColours[1]' must be a non-empty single-line string"])
 def _(menu, guests):
     menu["strings"] = {"seatColours": ["blue", "", "green"]}
+
+
+@case(
+    "language_without_plural_rules",
+    base="serbian",
+    warnings=[M + "no plural rules for 'xx': the forms one and other are used"],
+)
+def _(menu, guests):
+    menu["lang"] = "xx-Latn"
+    for key in ("seatCount", "guestCount", "noteCount"):
+        del menu["strings"][key]["few"]
+
+
+@case("badge_letter_with_a_diacritic_in_lower_case", base="serbian",
+      errors=[M + "field 'requirements.vegan.letter' must be one capital letter"])
+def _(menu, guests):
+    menu["requirements"]["vegan"]["letter"] = "ž"
 
 
 class BrokenDataTest(unittest.TestCase):
@@ -853,7 +913,7 @@ FREE_SEATS_12_13 = (
 
 class FixturesTest(unittest.TestCase):
     def test_fixtures_pass(self):
-        expected = {"mockup16": [FREE_SEATS_12_13], "reserved19": [], "plain": [], "parts": []}
+        expected = {"mockup16": [FREE_SEATS_12_13], "reserved19": [], "plain": [], "parts": [], "serbian": []}
         for name, make in fixtures.SETS.items():
             with self.subTest(fixture=name):
                 index, errors, warnings = check(*make())
@@ -1061,6 +1121,51 @@ class LanguageTest(unittest.TestCase):
         # a language of the same plural rule takes them as they are
         menu["lang"] = "de"
         self.assertEqual(full_check(menu, guests), ([], []))
+
+    def test_a_long_label_of_a_guest_seat_needs_room_at_every_seat(self):
+        menu, guests = fixtures.serbian()
+        menu["strings"]["you"] = "Ovde sedite vi"
+        errors, warnings = full_check(menu, guests)
+        self.assertEqual(errors, [M + f"table.seats[{item}] (seat {seat}): no room for the label of the guest's seat"
+                                  for item, seat in ((1, 2), (1, 7), (2, 9), (2, 10), (2, 11))])
+        self.assertEqual(warnings, [])
+        # a short word fits wherever "You" does
+        menu["strings"]["you"] = "Ovde"
+        self.assertEqual(full_check(menu, guests), ([], []))
+
+    def test_a_language_without_plural_rules_uses_one_and_other(self):
+        menu, guests = fixtures.serbian()
+        menu["lang"] = "xx"
+        for key in ("guestCount", "noteCount"):
+            del menu["strings"][key]["few"]
+        del menu["strings"]["seatCount"]["one"]
+        self.assertEqual(full_check(menu, guests), (
+            [M + "field 'strings.seatCount.few' is not a form 'xx' uses (one, other)",
+             M + "field 'strings.seatCount.one' is required: 'xx' uses the forms one, other"],
+            [M + "no plural rules for 'xx': the forms one and other are used"],
+        ))
+
+    def test_other_is_accepted_where_the_language_does_without_it(self):
+        menu, guests = fixtures.serbian()
+        menu["lang"] = "pl"
+        for key in ("seatCount", "guestCount", "noteCount"):
+            menu["strings"][key]["many"] = menu["strings"][key]["other"]
+        self.assertEqual(full_check(menu, guests), ([], []))
+        del menu["strings"]["guestCount"]["other"]
+        self.assertEqual(full_check(menu, guests), ([], []))
+        del menu["strings"]["guestCount"]["many"]
+        self.assertEqual(full_check(menu, guests)[0],
+                         [M + "field 'strings.guestCount.many' is required: 'pl' uses the forms one, few, many"])
+
+    def test_with_a_broken_language_tag_the_forms_are_checked_without_their_categories(self):
+        menu, guests = fixtures.serbian()
+        menu["lang"] = "sr_Latn"
+        menu["strings"]["guestCount"] = {"one": "{n} gost", "few": "nekoliko gostiju", "lots": "{n} gostiju"}
+        self.assertEqual(full_check(menu, guests)[0], [
+            M + LANG_PROBLEM,
+            M + "field 'strings.guestCount.few' must contain the placeholder {n}",
+            M + "field 'strings.guestCount.lots' is not a plural form: one of zero, one, two, few, many, other",
+        ])
 
     def test_labels_of_the_line_are_compared_with_their_case_folded(self):
         menu, guests = fixtures.parts()
