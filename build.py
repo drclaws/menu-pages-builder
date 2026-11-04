@@ -54,6 +54,8 @@ import traceback
 from pathlib import Path
 from typing import Any, NamedTuple
 
+from menu_tools import _core, _output, _page, _schema
+
 EXIT_OK = 0
 EXIT_ERROR = 1
 EXIT_USAGE = 2
@@ -85,23 +87,17 @@ COMMANDS = {
 def _base_path_type(value: str) -> str:
     """`build --base-path`: `/` or `/seg[/seg…]` (a bad value is a bad
     command line, and it is not repeated)."""
-    from menu_tools import _core
-
     return _core.base_path_argument(value)
 
 
 def _url_type(value: str) -> str:
     """`links --url`: an http(s) address without credentials, query or
     fragment; the trailing '/' is dropped."""
-    from menu_tools import _core
-
     return _core.parse_published_url(value)
 
 
 def _prefix_type(value: str) -> str:
     """`token --prefix`: the characters of a token (A-Z, a-z, 0-9, '_' and '-')."""
-    from menu_tools import _core
-
     return _core.token_prefix(value)
 
 
@@ -190,8 +186,6 @@ def load_data(data_dir: Path | str, report: Any, settings: Any = None) -> Data:
     are collected and raised together as a `ValidationError` (warnings go to
     the report as they come).
     """
-    from menu_tools import _core, _page, _schema
-
     path = Path(data_dir)
     if not path.is_dir():
         report.error(f"data directory not found: {_core.display_path(path)}")
@@ -238,7 +232,6 @@ def _stderr(message: str) -> None:
 def cli_report() -> Any:
     """The report of a command: warnings go to stderr at once, with the
     tokens it has seen hidden (`Report.redact`)."""
-    from menu_tools import _core
 
     def warn(message: str) -> None:
         _stderr(f"warning: {report.redact(message)}")
@@ -289,8 +282,6 @@ def check_out(out_dir: Path, data_dir: Path) -> None:
     a previous build.  The messages never repeat a path: the data is not read
     yet, so no token is known to hide.
     """
-    from menu_tools import _core
-
     if is_inside(out_dir, data_dir, strict=True):
         raise _core.BuildError(
             "--out must not lie inside the data directory (--data): the build never writes "
@@ -303,8 +294,6 @@ def load_palette() -> Any:
     """The colours of the design tokens of `assets/app.css` (the colour of the
     browser interface and the icon); `assets/favicon.svg` of the code would
     take the place of the generated icon and is refused."""
-    from menu_tools import _core
-
     assets = CODE_DIR / ASSETS_DIR
     try:
         taken = sorted(name for name in os.listdir(assets) if name.lower() == FAVICON_FILE)
@@ -327,8 +316,6 @@ def load_palette() -> Any:
 def render_page(template: Any, tree: dict) -> str:
     """One page: the template rendered on its tree, without HTML comments
     (notes of the template are never published)."""
-    from menu_tools import _core
-
     return _core.strip_html_comments(template.render(tree), template.name)
 
 
@@ -340,8 +327,6 @@ def render_pages(template: Any, pages: list) -> list[tuple[str, str]]:
     `guests.json: guest #N: <problem>` for one record,
     `<k> guest record(s): <problem>; first: guests.json: guest #N` for more.
     """
-    from menu_tools import _core, _schema
-
     rendered: list[tuple[str, str]] = []
     failures: dict[str, list[int]] = {}  # problem -> numbers of the records
     for page in pages:
@@ -360,8 +345,6 @@ def render_pages(template: Any, pages: list) -> list[tuple[str, str]]:
 
 
 def write_favicon(path: Path, palette: Any) -> None:
-    from menu_tools import _core
-
     try:
         path.write_bytes(_core.favicon_svg(palette))
     except OSError as exc:
@@ -372,8 +355,6 @@ def cmd_build(args: argparse.Namespace, report: Any) -> int:
     """Check `--out`, read the data, render the pages, write the output next
     to `--out`, check it and swap it in; the log shows counters and paths
     (directories named after tokens are hidden), never data."""
-    from menu_tools import _core, _output, _page
-
     data_dir = _data_dir(args)
     out_dir = Path(args.out) if args.out is not None else DEFAULT_OUT_DIR
     base_path = args.base_path or DEFAULT_BASE_PATH
@@ -436,8 +417,6 @@ def page_links(url: str, data: Data) -> list[str]:
 
 
 def cmd_links(args: argparse.Namespace, report: Any) -> int:
-    from menu_tools import _core
-
     if _core.running_in_ci():
         raise _core.BuildError(
             "this command prints personal data and is meant for local use only; it does not "
@@ -451,8 +430,6 @@ def cmd_links(args: argparse.Namespace, report: Any) -> int:
 
 
 def cmd_token(args: argparse.Namespace, report: Any) -> int:
-    from menu_tools import _core
-
     prefix = args.prefix
     _stdout(_core.generate_token() if prefix is None else _core.generate_prefixed_token(prefix))
     return EXIT_OK
@@ -478,8 +455,6 @@ def debug_enabled() -> bool:
 
 def run_command(command: Any, args: argparse.Namespace) -> int:
     """Run a command; every message passes the report, which hides the tokens."""
-    from menu_tools import _core
-
     report = cli_report()
     try:
         return int(command(args, report))
