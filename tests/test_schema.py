@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from menu_tools import _core, _page, _schema  # noqa: E402  (imported after sys.path is prepared)
+from menu_tools import _core, _page, _schema, _words  # noqa: E402  (imported after sys.path is prepared)
 from tests import fixtures  # noqa: E402
 
 M = "menu.json: "
@@ -123,9 +123,14 @@ def _(menu, guests):
     menu["requirements"]["vegan"]["letter"] = "N"
 
 
-@case("letter_in_lower_case", errors=[M + "field 'requirements.alcohol.letter' must be one capital latin letter, A-Z"])
+@case("letter_in_lower_case", errors=[M + "field 'requirements.alcohol.letter' must be one capital letter"])
 def _(menu, guests):
     menu["requirements"]["alcohol"]["letter"] = "a"
+
+
+@case("two_letters", errors=[M + "field 'requirements.alcohol.letter' must be one capital letter"])
+def _(menu, guests):
+    menu["requirements"]["alcohol"]["letter"] = "AL"
 
 
 @case(
@@ -725,6 +730,82 @@ def _(menu, guests):
     menu["couple"] = {"members": [{"seat": 5, "name": "Vera"}, {"seat": 6, "name": "Ivan"}, {"seat": 7, "name": "Olga"}]}
 
 
+# --------------------------------------------------------------------------
+# The language and the words of the pages
+# --------------------------------------------------------------------------
+
+LANG_PROBLEM = "field 'lang' must be a language tag such as 'en', 'de' or 'sr-Latn'"
+
+
+@case("language_tag_with_an_underscore", errors=[M + LANG_PROBLEM])
+def _(menu, guests):
+    menu["lang"] = "sr_Latn"
+
+
+@case("language_tag_of_the_wrong_type", errors=[M + LANG_PROBLEM])
+def _(menu, guests):
+    menu["lang"] = ["en"]
+
+
+@case("empty_language_tag", errors=[M + LANG_PROBLEM])
+def _(menu, guests):
+    menu["lang"] = ""
+
+
+@case("misspelt_word", errors=[M + "unknown field 'strings.sectoins' (did you mean 'sections'?)"])
+def _(menu, guests):
+    menu["strings"] = {"sectoins": "Parts"}
+
+
+@case("empty_word", errors=[M + "field 'strings.pageTitle' must not be empty"])
+def _(menu, guests):
+    menu["strings"] = {"pageTitle": " "}
+
+
+@case("word_on_two_lines", errors=[M + "field 'strings.staffVersion' must be a single line (no line breaks)"])
+def _(menu, guests):
+    menu["strings"] = {"staffVersion": "Staff version\nnot for guests"}
+
+
+@case("word_with_template_syntax",
+      errors=[M + "field 'strings.you' must not contain '{{' or '}}' (menu texts have no template syntax)"])
+def _(menu, guests):
+    menu["strings"] = {"you": "{{you}}"}
+
+
+@case("pattern_without_its_placeholder", errors=[M + "field 'strings.guestOf' must contain the placeholder {name}"])
+def _(menu, guests):
+    menu["strings"] = {"guestOf": "a guest"}
+
+
+@case(
+    "pattern_with_an_unknown_placeholder",
+    errors=[M + "field 'strings.tablePlan' has an unknown placeholder {tabel}; known: {table}, {seats}, {yours}, {colours}"],
+)
+def _(menu, guests):
+    menu["strings"] = {"tablePlan": "{tabel} {table}: {seats}. {yours}: {colours}"}
+
+
+@case("plural_form_without_the_number", errors=[M + "field 'strings.seatCount.one' must contain the placeholder {n}"])
+def _(menu, guests):
+    menu["strings"] = {"seatCount": {"one": "one seat", "other": "{n} seats"}}
+
+
+@case("plural_word_of_the_wrong_type", errors=[M + "field 'strings.noteCount' must be an object, got a string"])
+def _(menu, guests):
+    menu["strings"] = {"noteCount": "{n} notes"}
+
+
+@case("colour_names_of_the_wrong_count", errors=[M + "field 'strings.seatColours' must be a list of 3 strings"])
+def _(menu, guests):
+    menu["strings"] = {"seatColours": ["blue", "red"]}
+
+
+@case("empty_colour_name", errors=[M + "field 'strings.seatColours[1]' must be a non-empty single-line string"])
+def _(menu, guests):
+    menu["strings"] = {"seatColours": ["blue", "", "green"]}
+
+
 class BrokenDataTest(unittest.TestCase):
     """One test per broken copy (`CASES`), added below the class."""
 
@@ -959,6 +1040,35 @@ class TableMessagesTest(unittest.TestCase):
         self.assertTrue(report.errors[1].endswith("duplicate key 'note' in '[0].sections.main' (JSON keeps only the last one; merge or rename them)"))
         for message in report.errors:
             self.assertNotIn("Olga", message)
+
+
+class LanguageTest(unittest.TestCase):
+    """`lang` and `strings` beyond the one-message cases."""
+
+    def test_an_english_menu_may_give_some_words(self):
+        for tag in ("en", "en-GB", "EN-us"):
+            with self.subTest(lang=tag):
+                menu, guests = fixtures.reserved19()
+                menu.update(lang=tag, strings={"and": "and", "seatInline": "place", "seatsInline": "places",
+                                               "guestCount": {"one": "{n} diner", "other": "{n} diners"}})
+                self.assertEqual(full_check(menu, guests), ([], []))
+
+    def test_every_english_word_given_as_the_menu_word(self):
+        menu, guests = fixtures.reserved19()
+        menu["strings"] = {key: list(value) if isinstance(value, tuple) else value
+                           for key, value in _words.ENGLISH.items()}
+        self.assertEqual(full_check(menu, guests), ([], []))
+        # a language of the same plural rule takes them as they are
+        menu["lang"] = "de"
+        self.assertEqual(full_check(menu, guests), ([], []))
+
+    def test_labels_of_the_line_are_compared_with_their_case_folded(self):
+        menu, guests = fixtures.parts()
+        menu["sections"][3]["nav"] = "Straße"
+        menu["sections"][4]["nav"] = "STRASSE"
+        self.assertEqual(full_check(menu, guests), ([], [
+            M + "field 'sections[4].nav' repeats the label of sections[3] in the navigation bar "
+            "(letter case aside)"]))
 
 
 class UsageTest(unittest.TestCase):

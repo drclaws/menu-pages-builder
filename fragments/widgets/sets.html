@@ -1,4 +1,4 @@
-<!-- The set switcher; expects in `.`: domId, labelledBy, items[] (a set - domId, title, hint, eyebrow, courses[] of dishes, pairing, swapLines[], nested), note, multiple; in the page root: isStaff. The hooks of the script's tabs module: data-tabs on the widget, the tab list (data-tabs-tablist, hidden until the script shows it; labelled by the heading of the part the widget stands in, else by the section title), its tabs (data-tabs-tab, each naming its card by aria-controls) and the cards (data-tabs-panel). Without the script the tab list stays hidden and the cards follow each other; with it one card shows under the tabs. A single set has no tab list. A card: the title (h3; h4 when the widget stands under a part's heading, nested) with its eyebrow, the numbered courses, the pairing and, on the staff page, the swaps; the note stands under the cards. The switcher only shows the sets: nothing is chosen or sent here. -->
+<!-- The set switcher; expects in `.`: domId, labelledBy, items[] (a set - domId, title, hint, eyebrow, courses[] of dishes, pairing, pairingText, swapLines[], nested), note, multiple; in the page root: isStaff. The hooks of the script's tabs module: data-tabs on the widget, the tab list (data-tabs-tablist, hidden until the script shows it; labelled by the heading of the part the widget stands in, else by the section title), its tabs (data-tabs-tab, each naming its card by aria-controls) and the cards (data-tabs-panel). Without the script the tab list stays hidden and the cards follow each other; with it one card shows under the tabs. A single set has no tab list. A card: the title (h3; h4 when the widget stands under a part's heading, nested) with its eyebrow, the numbered courses, the pairing (pairingText, shown when there is a pairing) and, on the staff page, the swaps; the note stands under the cards. The switcher only shows the sets: nothing is chosen or sent here. -->
 <div class="widget sets-widget sets" id="{{.domId}}" data-tabs><!-- if:.multiple -->
   <div class="sets__tabs" role="tablist" aria-labelledby="{{.labelledBy}}" data-tabs-tablist hidden>
     <!-- each:.items -->
@@ -18,7 +18,7 @@
       <ol class="dishes sets__courses" role="list">
         <!-- each:.courses --><!-- include:partials/dish-item --><!-- endeach -->
       </ol><!-- if:.pairing -->
-      <p class="note-line sets__pairing">Paired with {{.pairing}}</p><!-- endif --><!-- if:isStaff --><!-- if:.swapLines -->
+      <p class="note-line sets__pairing">{{.pairingText}}</p><!-- endif --><!-- if:isStaff --><!-- if:.swapLines -->
       <div class="sets__swaps"><!-- each:.swapLines -->
         <p class="note-line">{{.}}</p><!-- endeach -->
       </div><!-- endif --><!-- endif -->

@@ -1,9 +1,9 @@
-<!-- The seat table on the staff page; expects in `.`: the seating widget - scheme, rows[] (number, name, isPlusOne, hostName, roleLabel, isCouple, isFree, tags[]). One row per seat, in seat order: the number in a frame (grey for the couple), then the guest. A free or reserved seat shows a dash; a +1 with a name shows the name, like every guest, and whose guest it is; a +1 without one shows "+1", whose guest it is and a placeholder for the name; a role follows the name; dietary needs are orange pills. A rule separates the table from a scheme above it. -->
+<!-- The seat table on the staff page; expects in `.`: the seating widget - scheme, rows[] (number, name, isPlusOne, hostLine, roleLabel, isCouple, isFree, tags[]); in the page root: strings.seatNumber, strings.guestAndNotes, strings.nameBlank. One row per seat, in seat order: the number in a frame (grey for the couple), then the guest. A free or reserved seat shows a dash; a +1 with a name shows the name, like every guest, and whose guest it is (hostLine); a +1 without one shows "+1", whose guest it is and a placeholder for the name (strings.nameBlank); a role follows the name; dietary needs are orange pills. A rule separates the table from a scheme above it. -->
 <!-- if:.rows --><!-- if:.scheme -->
 <hr class="divider seating__divider"><!-- endif -->
 <table class="seat-table">
   <thead>
-    <tr><th class="seat-table__no" scope="col">No.</th><th scope="col">Guest · dietary notes</th></tr>
+    <tr><th class="seat-table__no" scope="col">{{strings.seatNumber}}</th><th scope="col">{{strings.guestAndNotes}}</th></tr>
   </thead>
   <tbody>
     <!-- each:.rows -->
@@ -12,9 +12,9 @@
       <td><div class="seat-table__guest"><!-- if:.isFree -->
         <span class="seat-table__free">—</span><!-- endif --><!-- if:!.isFree --><!-- if:.isPlusOne --><!-- if:.name -->
         <span class="seat-table__name">{{.name}}</span>
-        <span class="seat-table__role">· {{.hostName}}’s guest</span><!-- endif --><!-- if:!.name -->
+        <span class="seat-table__role">· {{.hostLine}}</span><!-- endif --><!-- if:!.name -->
         <span class="seat-table__name">+1</span>
-        <span class="seat-table__role">· {{.hostName}}’s guest, [name]</span><!-- endif --><!-- endif --><!-- if:!.isPlusOne -->
+        <span class="seat-table__role">· {{.hostLine}}, {{strings.nameBlank}}</span><!-- endif --><!-- endif --><!-- if:!.isPlusOne -->
         <span class="seat-table__name">{{.name}}</span><!-- if:.roleLabel -->
         <span class="seat-table__role">· {{.roleLabel}}</span><!-- endif --><!-- endif --><!-- if:.tags -->
         <ul class="pills" role="list"><!-- each:.tags --><li class="pill pill--flag">{{.}}</li><!-- endeach --></ul><!-- endif --><!-- endif -->

@@ -25,7 +25,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from menu_tools import _core as core  # noqa: E402  (imported after sys.path is prepared)
-from menu_tools import _page, _schema  # noqa: E402
+from menu_tools import _page, _schema, _words  # noqa: E402
 from tests import fixtures  # noqa: E402
 from tests import page_trees as T  # noqa: E402
 
@@ -52,7 +52,7 @@ UNREAD = {
 #: The fields that only the staff page fills: a guest page leaves them empty
 #: and never reads them.
 STAFF_ONLY = frozenset({
-    "root.staff", "staff.updated", "staff.contact", "staff.reminder",
+    "root.staff", *(f"staff.{field}" for field in T.NODES["staff"]),
     "root.counters", *(f"counters.{field}" for field in T.NODES["counters"]),
     "seating.legend", "seating.rows", "seating.footnote",
     *(f"legend.{field}" for field in T.NODES["legend"]),
@@ -66,16 +66,17 @@ STAFF_ONLY = frozenset({
 #: (or has no such widget) and never reads them.
 GUEST_ONLY = frozenset({
     "seating.names", *(f"seatName.{field}" for field in T.NODES["seatName"]),
-    "scheme.labels", "scheme.mine", "scheme.single", "schemeSeat.colour",
+    "scheme.labels", "scheme.planText", "schemeSeat.colour",
     *(f"schemeLabel.{field}" for field in T.NODES["schemeLabel"]),
     "drinks.groups", *(f"group.{field}" for field in T.NODES["group"]),
 })
 
-#: The interface words: they live in the fragments, never in the tree.
+#: The words of the staff page (the English defaults): a guest page shows none.
 STAFF_WORDS = ("Staff version · not for guests", "updated", "No.", "Guest · dietary notes",
                "’s guest", "[name]", "no restrictions", "Contact on the night:")
-#: The table plan words: its name and the guest's seat label.
-SCHEME_WORDS = ("Table plan", "seats", "Your seat", "Your seats", "You")
+#: The texts of the markup that are no words: typographic marks, the dash of
+#: a free seat and the "+1" of a companion without a name.
+TYPOGRAPHY = ("·", ",", "—", "+1")
 #: The classes of the parts only the staff page has: the couple and the seat
 #: numbers among them.
 STAFF_CLASSES = ("staff-bar", "staff-footer", "cover--staff", "cover__counters", "legend",
@@ -293,13 +294,15 @@ class TreeTests(unittest.TestCase):
         self.assertNotIn("couple", {seat["kind"] for seat in plan["seats"]})
         self.assertEqual([(seat["number"], seat["ring"], seat["colour"]) for seat in plan["seats"]
                           if seat["kind"] == "you"], [("8", True, "1"), ("9", True, "2")])
-        self.assertEqual((plan["labels"], plan["single"], plan["badges"]), ([], False, []))
-        self.assertEqual(plan["mine"], "Olga — blue, your guest — dark red")
+        self.assertEqual((plan["labels"], plan["badges"]), ([], []))
+        self.assertEqual(plan["planText"], "Table plan: L-shaped table, 16 seats. Your seats: "
+                                           "Olga — blue, your guest — dark red")
         self.assertEqual([(item["name"], item["colour"]) for item in plus_one["names"]],
                          [("Olga", "1"), ("your guest", "2")])
         # a one-seat guest: "You" by the seat
         alone = widgets_of(trees["guest-alone"], "seating")[0]
-        self.assertEqual((alone["scheme"]["single"], len(alone["scheme"]["labels"])), (True, 1))
+        self.assertEqual(len(alone["scheme"]["labels"]), 1)
+        self.assertIn("Your seat: Boris", alone["scheme"]["planText"])
         self.assertEqual([(item["name"], item["colour"]) for item in alone["names"]], [("Boris", "1")])
         no_table = widgets_of(trees["guest-without-table"], "seating")[0]
         self.assertEqual((no_table["names"][0]["name"], no_table["scheme"]), ("Klara", None))
@@ -470,18 +473,39 @@ class FragmentFilesTests(unittest.TestCase):
                     if name == "template" else []
                 self.assertEqual(scripts, expected)
 
-    def test_the_words_of_the_interface_are_in_the_fragments(self):
-        markup = "".join(re.sub(r"<!--.*?-->", "", source, flags=re.S)
-                         for source in self.sources.values())
-        markup += TEMPLATE.read_text(encoding="utf-8")
-        for word in STAFF_WORDS + SCHEME_WORDS + ("Paired with", "—", "Dinner menu · ", 'aria-label="Sections"'):
-            with self.subTest(word=word):
-                self.assertIn(word, markup)
-        # the plan's words are in its partial: the tree holds none of them
-        scheme = re.sub(r"<!--.*?-->", "", self.sources["partials/scheme"], flags=re.S)
-        for word in SCHEME_WORDS:
-            with self.subTest(word=word):
-                self.assertIn(word, scheme)
+    def test_the_markup_holds_no_word_of_its_own(self):
+        # every word of a page comes from the tree, in the page's language:
+        # the text of the markup and its labels are typographic marks alone
+        sources = dict(self.sources, template=TEMPLATE.read_text(encoding="utf-8"))
+        checked = 0
+        for name, source in sources.items():
+            markup = re.sub(r"\{\{.*?\}\}", "", re.sub(r"<!--.*?-->", "", source, flags=re.S))
+            texts = re.findall(r">([^<>]*)<", markup) + re.findall(r'\s(?:aria-label|title|alt)="([^"]*)"', markup)
+            for text in texts:
+                for mark in TYPOGRAPHY:
+                    text = text.replace(mark, "")
+                checked += 1
+                with self.subTest(file=name, text=text.strip()):
+                    self.assertEqual(text.strip(), "")
+        self.assertGreater(checked, 100)
+        # the words come from the page root and from the texts the build words
+        for name, fields in (("template", ("{{lang}}", "{{strings.pageTitle}}", "{{strings.staffVersion}}",
+                                           "{{staff.updatedText}}", "{{staff.contactText}}")),
+                             ("partials/section-nav", ('aria-label="{{strings.sections}}"',)),
+                             ("partials/scheme", ('aria-label="{{.planText}}"', ">{{strings.you}}</text>")),
+                             ("partials/seat-table", ("{{strings.seatNumber}}", "{{strings.guestAndNotes}}",
+                                                      "· {{.hostLine}}</span>",
+                                                      "· {{.hostLine}}, {{strings.nameBlank}}</span>")),
+                             ("partials/pills", ("{{strings.noRestrictions}}",)),
+                             ("widgets/sets", ("{{.pairingText}}",))):
+            for field in fields:
+                with self.subTest(file=name, field=field):
+                    self.assertIn(field, sources[name])
+
+    def test_the_fixed_texts_of_the_trees_are_the_english_defaults(self):
+        self.assertEqual(T.STRINGS, _words.ENGLISH_WORDS.markup())
+        self.assertEqual(tuple(T.STRINGS), _words.MARKUP_KEYS)
+        self.assertEqual(T.NODES["strings"], _words.MARKUP_KEYS)
 
     def test_the_scheme_partial_draws_the_plan_from_the_contract(self):
         frame = "<!-- with:scheme --><!-- include:partials/scheme --><!-- endwith -->"
@@ -493,8 +517,8 @@ class FragmentFilesTests(unittest.TestCase):
             tree = T.all_trees()[name]
             reads: set[str] = set()
             scheme = strict(widgets_of(tree, "seating")[0]["scheme"], reads, "scheme")
-            output = core.strip_html_comments(
-                template.render({"isStaff": tree["isStaff"], "scheme": scheme}), "frame")
+            context = {"isStaff": tree["isStaff"], "strings": tree["strings"], "scheme": scheme}
+            output = core.strip_html_comments(template.render(context), "frame")
             with self.subTest(tree=name):
                 self.assertTrue(output.startswith('\n<svg class="scheme" viewBox="0 0 318 310"'))
                 self.assertTrue(output.endswith("</svg>\n"))
