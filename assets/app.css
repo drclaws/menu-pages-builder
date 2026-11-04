@@ -33,8 +33,7 @@
    1. Tokens
    -----------------------------------------------------------------------------
    The general design tokens: colours, type, spacing, lines, motion and the
-   sizes of components. Some of them are read by no rule of this file; the
-   tokens of the menu alone are in section 1a.
+   sizes of components; the tokens of the menu alone are in section 1a.
 
    Names follow roles, not values. A parameter that differs between phone and
    desktop is a pair of unitless numbers `-mobile` / `-desktop` (px at a 16px
@@ -77,20 +76,12 @@
   --color-line: #c9ccd2;
   --color-line-strong: #6b7078;
   --color-focus: #8a3d00;
-  --color-overlay: rgba(14, 16, 18, 0.78);
-  --color-on-overlay: #ffffff;
-  --color-focus-on-overlay: #ffc46b;
-  --color-overlay-control: rgba(14, 16, 18, 0.62);
-  --color-overlay-control-hover: rgba(14, 16, 18, 0.92);
-  --color-disabled-bg: #e4e6ea;
-  --color-disabled-text: #6b7078;
   --color-shadow: rgba(14, 16, 18, 0.16);
 
   /* --- Fonts (by role) ---------------------------------------------------- */
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, "Noto Sans", sans-serif;
   --font-heading: var(--font-body);
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --font-weight-body: 400;
   --font-weight-medium: 500;
@@ -146,12 +137,6 @@
   --text-2xl: clamp(min(var(--text-2xl-mobile) / 16 * 1rem, var(--text-2xl-desktop) / 16 * 1rem),
     calc(var(--text-2xl-mobile) / 16 * 1rem + (var(--text-2xl-desktop) - var(--text-2xl-mobile)) * var(--fluid)),
     max(var(--text-2xl-mobile) / 16 * 1rem, var(--text-2xl-desktop) / 16 * 1rem));
-
-  --text-display-mobile: 38;
-  --text-display-desktop: 68;
-  --text-display: clamp(min(var(--text-display-mobile) / 16 * 1rem, var(--text-display-desktop) / 16 * 1rem),
-    calc(var(--text-display-mobile) / 16 * 1rem + (var(--text-display-desktop) - var(--text-display-mobile)) * var(--fluid)),
-    max(var(--text-display-mobile) / 16 * 1rem, var(--text-display-desktop) / 16 * 1rem));
 
   /* --- Spacing scale (pairs; rem capped by the viewport width) ------------- */
   --space-3xs-mobile: 4;
@@ -251,33 +236,10 @@
       max(var(--container-gutter-mobile) / 16 * 1rem, var(--container-gutter-desktop) / 16 * 1rem)),
     calc(var(--container-gutter-mobile) / var(--vw-min) * 100vw));
 
-  /* --- Grid; gallery and countdown ------------------------------------------ */
+  /* --- Grid ---------------------------------------------------------------- */
   --grid-columns-mobile: 1;
   --grid-columns-desktop: 2;
   --grid-columns: var(--grid-columns-mobile);
-
-  --gallery-columns-mobile: 2;
-  --gallery-columns-desktop: 3;
-  --gallery-columns: var(--gallery-columns-mobile);
-
-  --gallery-columns-venue-mobile: 2;
-  --gallery-columns-venue-desktop: 2;
-  --gallery-columns-venue: var(--gallery-columns-venue-mobile);
-
-  --gallery-ribbon-item-size: 82%;
-
-  --countdown-columns: 4;
-  --countdown-columns-narrow: 2;
-  --countdown-inline-min: 19.5rem;
-  --countdown-columns-stack: 1;
-  --countdown-stack-max: 9rem;
-  --countdown-gap-mobile: 4;
-  --countdown-gap-desktop: 14;
-  --countdown-gap: min(
-    clamp(min(var(--countdown-gap-mobile) / 16 * 1rem, var(--countdown-gap-desktop) / 16 * 1rem),
-      calc(var(--countdown-gap-mobile) / 16 * 1rem + (var(--countdown-gap-desktop) - var(--countdown-gap-mobile)) * var(--fluid)),
-      max(var(--countdown-gap-mobile) / 16 * 1rem, var(--countdown-gap-desktop) / 16 * 1rem)),
-    calc(var(--countdown-gap-mobile) / var(--vw-min) * 100vw));
 
   --grid-gap-mobile: 16;
   --grid-gap-desktop: 28;
@@ -295,8 +257,6 @@
   --radius-round: 50%;
 
   --shadow-sm: 0 1px 2px var(--color-shadow);
-  --shadow-md: 0 4px 12px var(--color-shadow);
-  --shadow-lg: 0 12px 32px var(--color-shadow);
 
   --line-width-hairline: 1px;
   --line-width: 2px;
@@ -305,56 +265,13 @@
   --focus-ring-width: 3px;
   --focus-ring-offset: 2px;
   --focus-ring-offset-inset: calc(var(--focus-ring-width) * -1);
-  --focus-ring-inset-halo: calc(var(--focus-ring-width) * 2);
 
-  --opacity-disabled: 0.6;
-
-  /* --- Image ratios (switched at the layout boundary) ---------------------- */
-  --ratio-photo-mobile: 4 / 3;
-  --ratio-photo-desktop: 3 / 2;
-  --ratio-photo: var(--ratio-photo-mobile);
-
-  --ratio-gallery-mobile: 1 / 1;
-  --ratio-gallery-desktop: 4 / 3;
-  --ratio-gallery: var(--ratio-gallery-mobile);
-
-  --ratio-scheme-mobile: 4 / 3;
-  --ratio-scheme-desktop: 16 / 9;
-  --ratio-scheme: var(--ratio-scheme-mobile);
-
-  --ratio-video: 16 / 9;
-  --ratio-og: 1200 / 630;
-
-  --image-focus: 50% 50%;
-
-  /* --- Viewport height, cover, media (svh / dvh where supported) ----------- */
+  /* --- Viewport height (svh / dvh where supported) ------------------------- */
   --viewport-height: 100vh;
   --viewport-height-dynamic: 100vh;
 
-  --cover-height-ratio-mobile: 1;
-  --cover-height-ratio-desktop: 0.9;
-  --cover-height-ratio: var(--cover-height-ratio-mobile);
-  --cover-min-height: calc(var(--viewport-height) * var(--cover-height-ratio));
-
-  /* Cover photo: a veil of the cover colour; 0.6 keeps the text at 4.5:1. */
-  --color-cover-veil: var(--color-surface);
-  --color-cover-text: var(--color-text);
-  --cover-veil-opacity: 0.6;
-
-  /* Top bar of a full-screen cover once it is folded. */
-  --cover-bar-padding-block: var(--space-2xs);
-  --cover-bar-size: max(var(--tap-min),
-    calc(var(--text-base) * var(--line-height-tight) + var(--cover-bar-padding-block) * 2));
-  --cover-bar-block-size: calc(var(--cover-bar-size) + var(--safe-inset-top));
-  --cover-fade-end: 0.6;
-  --cover-bar-fade-start: 0.55;
-
-  --media-max-height-ratio: 0.8;
-  --media-max-height: calc(var(--viewport-height) * var(--media-max-height-ratio));
-
   /* --- Motion -------------------------------------------------------------- */
   --duration-fast: 140ms;
-  --duration-base: 280ms;
   --duration-slow: 600ms;
 
   --ease-out: cubic-bezier(0.2, 0.6, 0.3, 1);
@@ -366,24 +283,14 @@
     calc(var(--reveal-distance-mobile) * 1px + (var(--reveal-distance-desktop) - var(--reveal-distance-mobile)) * var(--fluid)),
     max(var(--reveal-distance-mobile) * 1px, var(--reveal-distance-desktop) * 1px));
 
-  --cover-distance-mobile: 6;
-  --cover-distance-desktop: 12;
-  --cover-distance: clamp(min(var(--cover-distance-mobile) * 1px, var(--cover-distance-desktop) * 1px),
-    calc(var(--cover-distance-mobile) * 1px + (var(--cover-distance-desktop) - var(--cover-distance-mobile)) * var(--fluid)),
-    max(var(--cover-distance-mobile) * 1px, var(--cover-distance-desktop) * 1px));
-
   --reveal-stagger: 70ms;
-  --hover-scale: 1.03;
 
   /* --- Accessibility and layers -------------------------------------------- */
   /* 44px is an accessibility requirement, not a style. */
   --tap-min: 44px;
 
-  --z-base: 0;
   --z-raised: 1;
   --z-sticky: 50;
-  --z-overlay: 100;
-  --z-lightbox: 110;
 
   /* Safe areas of notched and rounded screens (platform values). */
   --safe-inset-top: env(safe-area-inset-top, 0px);
@@ -392,35 +299,20 @@
   --safe-inset-left: env(safe-area-inset-left, 0px);
 
   /* --- Component tokens ---------------------------------------------------- */
-  --media-play-size: calc(var(--tap-min) + var(--icon-size));
-  --media-play-icon-size: calc(var(--icon-size) * 1.5);
-
-  --lightbox-scroll-gap: 0px;
-
   --icon-size-mobile: 20;
   --icon-size-desktop: 22;
   --icon-size: clamp(min(var(--icon-size-mobile) / 16 * 1rem, var(--icon-size-desktop) / 16 * 1rem),
     calc(var(--icon-size-mobile) / 16 * 1rem + (var(--icon-size-desktop) - var(--icon-size-mobile)) * var(--fluid)),
     max(var(--icon-size-mobile) / 16 * 1rem, var(--icon-size-desktop) / 16 * 1rem));
 
-  --countdown-cell-min: var(--tap-min);
-  --countdown-cell-max-mobile: 96;
-  --countdown-cell-max-desktop: 128;
-  --countdown-cell-max: clamp(min(var(--countdown-cell-max-mobile) / 16 * 1rem, var(--countdown-cell-max-desktop) / 16 * 1rem),
-    calc(var(--countdown-cell-max-mobile) / 16 * 1rem + (var(--countdown-cell-max-desktop) - var(--countdown-cell-max-mobile)) * var(--fluid)),
-    max(var(--countdown-cell-max-mobile) / 16 * 1rem, var(--countdown-cell-max-desktop) / 16 * 1rem));
   /* Label-and-text list: the label column takes everything but
      --schedule-body-min and at least --schedule-time-max; below
      --schedule-inline-min (read-only, repeated in @container) it stacks. */
   --schedule-time-max: 45%;
   --schedule-inline-min: 18.5rem;
   --schedule-body-min: 16rem;
-  /* Tabs of events; the sets have their own --sets-tab-min. */
-  --events-tab-min: 11rem;
   --divider-thickness: var(--line-width-hairline);
   --card-padding: var(--space-md);
-  --btn-padding-block: var(--space-xs);
-  --btn-padding-inline: var(--space-md);
 }
 
 /* The layout boundary; must match --bp-layout = 48em. Only layout tokens
@@ -428,12 +320,6 @@
 @media (min-width: 48em) {
   :root {
     --grid-columns: var(--grid-columns-desktop);
-    --gallery-columns: var(--gallery-columns-desktop);
-    --gallery-columns-venue: var(--gallery-columns-venue-desktop);
-    --ratio-photo: var(--ratio-photo-desktop);
-    --ratio-gallery: var(--ratio-gallery-desktop);
-    --ratio-scheme: var(--ratio-scheme-desktop);
-    --cover-height-ratio: var(--cover-height-ratio-desktop);
   }
 }
 
@@ -450,12 +336,9 @@
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-fast: 0.01ms;
-    --duration-base: 0.01ms;
     --duration-slow: 0.01ms;
     --reveal-stagger: 0.01ms;
     --reveal-distance: 0px;
-    --cover-distance: 0px;
-    --hover-scale: 1;
   }
 }
 

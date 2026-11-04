@@ -24,6 +24,14 @@ SECTIONS = (
 #: The sections where raw values (colours, lengths, durations) belong.
 TOKEN_SECTIONS = ("1", "1a")
 
+#: The tokens that repeat the number of an @media or @container condition,
+#: where var() does not work: nothing reads them, they document the number.
+CONDITION_TOKENS = frozenset({"--bp-layout", "--schedule-inline-min"})
+#: The code that may read a token by its name (the build reads the palette).
+CODE_FILES = ("build.py", "menu_tools/*.py", "assets/app.js", "template.html", "fragments/**/*.html")
+CUSTOM_DECLARATION_RE = re.compile(r"(?<![\w-])(--[\w-]+)\s*:([^;{}]*)")
+VAR_RE = re.compile(r"var\(\s*(--[\w-]+)")
+
 SECTION_RE = re.compile(r"^/\* =+\n   (\d+a?)\. (.+)$", re.MULTILINE)
 RAW_VALUE_RE = re.compile(r"#[0-9a-fA-F]{3,8}\b|\b(?:rgb|rgba|hsl|hsla|oklch|color-mix)\("
                           r"|(?<![\w.#-])\d*\.?\d+(?:px|rem|em|ms|s|vw|vh|svh|dvh)\b")
@@ -65,6 +73,23 @@ def bare_factors(css):
 def strip_comments(css):
     """The CSS without comments; line breaks are kept, so line numbers stay."""
     return re.sub(r"/\*.*?\*/", lambda match: "\n" * match.group(0).count("\n"), css, flags=re.S)
+
+
+def unread_tokens(css, code):
+    """The custom properties of the CSS that no rule, no token that is read and no code reads."""
+    css = strip_comments(css)
+    reads = {}
+    for name, value in CUSTOM_DECLARATION_RE.findall(css):
+        reads.setdefault(name, set()).update(VAR_RE.findall(value))
+    read = set(VAR_RE.findall(CUSTOM_DECLARATION_RE.sub("", css)))
+    read |= {name for name in reads if re.search(r"(?<![\w-])%s(?![\w-])" % re.escape(name), code)}
+    queue = list(read)
+    while queue:
+        for name in reads.get(queue.pop(), ()):
+            if name not in read:
+                read.add(name)
+                queue.append(name)
+    return sorted(set(reads) - read)
 
 
 def rules(css):
@@ -180,12 +205,18 @@ class StyleSheetTest(unittest.TestCase):
         self.assertEqual(rules(self.section_code("3"))["[hidden]"], "display: none !important;")
 
     def test_no_styles_of_link_buttons(self):
-        # the pages have no link button, so no rule styles one; its tokens
-        # stay in section 1 with the other general tokens
         self.assertNotRegex(self.code, r"\.btn\b")
-        self.assertIn("--btn-padding-block:", self.section_code("1"))
         header = self.raw[:self.raw.index("*/") + 2]
         self.assertNotIn("button", header)
+
+    def test_every_token_is_read(self):
+        # by a rule, by another token that is read or by the code; the tokens
+        # of the conditions alone are read by nothing
+        code = "\n".join(path.read_text(encoding="utf-8")
+                         for pattern in CODE_FILES for path in sorted(ROOT.glob(pattern)))
+        self.assertIn("--color-accent", code)
+        unread = unread_tokens(self.raw, code)
+        self.assertEqual([name for name in unread if name not in CONDITION_TOKENS], [])
 
 
 class SetSwitcherStylesTest(unittest.TestCase):
@@ -230,8 +261,6 @@ class SetSwitcherStylesTest(unittest.TestCase):
 
     def test_the_tab_width_is_a_menu_token(self):
         self.assertIn("var(--sets-tab-min)", self.components)
-        self.assertNotIn("--events-tab-min", self.components)
-        self.assertNotIn("--events-count", self.code)
 
 
 class MenuStylesTest(unittest.TestCase):
