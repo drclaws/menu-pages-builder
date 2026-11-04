@@ -26,7 +26,12 @@ data format.
 ```
 build.py               command line entry point: build, validate, links, token
 menu_tools/            the package of the builder
-  _core.py             the bridge to the invitations builder in site/: all that is taken from it
+  _engine.py           the template engine, the report of a command, the output directory and its checks
+  _values.py           JSON, field paths in messages, ids and tokens
+  _checks.py           the messages of the data checks
+  _tokens.py           the design tokens of the style sheet
+  _icon.py             the icon, in the colours of the design tokens
+  _core.py             the names the rest of the package takes from the modules above
   _schema.py           the checks of menu.json and guests.json
   _page.py             the page trees of the guests and of the staff
   _words.py            the words the build joins with numbers and names
@@ -39,7 +44,6 @@ fragments/             the fragments of the sections, the widgets and their part
 assets/                the style sheet and the script of the pages
 examples/data/         fictional data: an L-shaped table of 19 seats, dietary notes, a staff page
 examples/data-plain/   fictional data without a table and dietary notes
-site/                  submodule: the code of the invitations builder, pinned to a commit
 tests/                 unit tests (unittest, standard library only)
 .github/workflows/     unit tests, repository hygiene, builds of the examples and their checks
 LICENSE                the MIT license
@@ -232,16 +236,13 @@ are on the staff plan alone.
 the site under which the output is published (default: `/`).
 
 Exit codes: `0` - success; `1` - errors in the data or in the finished output,
-an `--out` that is not replaced, `links` in CI, or the submodule `site/` is not
-checked out; `2` - a bad command line.
+an `--out` that is not replaced or `links` in CI; `2` - a bad command line.
 
 ## Tests
 
-Python 3.10 or newer is required; there are no third-party packages. The
-code of the invitations builder comes with the submodule:
+Python 3.10 or newer is required; there are no third-party packages.
 
 ```
-git submodule update --init --recursive
 python3 -m unittest discover -s tests -t .
 ```
 

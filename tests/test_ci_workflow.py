@@ -324,15 +324,6 @@ class CiWorkflowTest(unittest.TestCase):
         self.assertEqual(commands, list(self.named.values()))
         self.assertEqual(len(commands), len(self.runs) - 1)
 
-    def test_checkout_fetches_the_submodule(self):
-        checkout = [step for step in self.steps
-                    if any("actions/checkout@" in line for line in step)]
-        self.assertEqual(len(checkout), 1)
-        keys = [line.strip() for line in checkout[0]]
-        self.assertIn("submodules: true", keys)
-        # one level is enough: the submodule has no submodules of its own
-        self.assertEqual(re.findall(r"submodules:\s*(\S*)", self.text), ["true"])
-
     def test_hygiene_checks_every_tracked_file_for_media(self):
         hygiene = [block for block in self.runs if "ls-files" in block]
         self.assertEqual(len(hygiene), 2)
