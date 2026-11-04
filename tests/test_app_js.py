@@ -14,8 +14,8 @@ MODULES = ["tabs", "reveal", "sectionNav"]
 
 
 def module_code(code, name):
-    """The code of a module (comments dropped): from the first declaration
-    after its header comment up to the header of the next module."""
+    """A module's code (comments dropped): from the first declaration after
+    its header comment up to the next module's header."""
     starts = {"tabs": "var TABS_STEPS", "reveal": "var REVEAL_INSET", "sectionNav": "var NAV_SLACK"}
     start = code.index(starts[name])
     following = [code.index(mark) for mark in starts.values() if code.index(mark) > start]
@@ -105,7 +105,7 @@ class AppJsSourceTest(unittest.TestCase):
                 self.assertRegex(selector, r"^'\[data-[a-z-]+\]'$")
         self.assertNotRegex(self.code, r"getElementsByClassName|getElementsByTagName")
         # an element by its id only where the id comes from the markup: the
-        # fragment of a link of the line of the sections
+        # fragment of a navigation bar link
         self.assertEqual(self.code.count("getElementById("), 1)
         self.assertIn("doc.getElementById(href.slice(1))", module_code(self.code, "sectionNav"))
 
@@ -118,8 +118,8 @@ class AppJsSourceTest(unittest.TestCase):
 
     def test_size_stays_small(self):
         # Our own code, not a library: without comments the file is about
-        # 15 KB (the reveal over a third of it, the line of the sections and
-        # the tabs about a quarter each); about 6.3 KB gzipped with comments.
+        # 15 KB (the reveal over a third of it, the navigation bar and the
+        # tabs about a quarter each); about 6.3 KB gzipped with comments.
         # Raise the limits deliberately, when a module needs it, not to make
         # room in advance.
         self.assertLess(len(self.code.encode("utf-8")), 16 * 1024)
@@ -161,7 +161,7 @@ class TabsSourceTest(unittest.TestCase):
         cls.tabs_css = components[components.index(".sets__panel {"):]
 
     def function(self, name):
-        """Source of a function of the module, up to the next declaration at its level."""
+        """Source of a module function, up to the next declaration at its level."""
         if name == "startTabs":
             return self.module[self.module.index("function startTabs("):
                                self.module.index("register('tabs'")].rstrip()
@@ -176,7 +176,7 @@ class TabsSourceTest(unittest.TestCase):
         self.assertRegex(init, r"querySelectorAll\('\[data-tabs\]'\), function \(widget\) \{\s*"
                                r"try \{\s*startTabs\(widget\);\s*\}\s*catch \(error\) \{\s*"
                                r"report\('tabs', error\);")
-        # every query of an instance starts from its own root
+        # every query an instance makes starts from its own root
         start = self.function("startTabs")
         for query in re.findall(r"(\w+)\.querySelector(?:All)?\(", start):
             self.assertIn(query, ("widget", "tablist"))
@@ -390,7 +390,7 @@ class RevealInvariantsTest(unittest.TestCase):
 
 
 class SectionNavSourceTest(unittest.TestCase):
-    """The module of the line of the sections: it marks, it never hides or scrolls the page."""
+    """The navigation bar module: it marks, it never hides or scrolls the page."""
 
     @classmethod
     def setUpClass(cls):
@@ -398,13 +398,13 @@ class SectionNavSourceTest(unittest.TestCase):
         cls.module = module_code(cls.code, "sectionNav")
 
     def test_registered_after_the_tabs(self):
-        # the tabs change the height of the page before the targets are measured
+        # the tabs change the page height before the targets are measured
         self.assertLess(self.code.index("register('tabs'"), self.code.index("register('sectionNav'"))
 
     def test_hooks_are_its_data_attributes_alone(self):
         hooks = sorted(set(re.findall(r"'\[(data-[a-z-]+)\]'", self.module)))
         self.assertEqual(hooks, ["data-section-nav", "data-section-nav-link", "data-section-nav-list"])
-        # nothing to do without the line or without a target
+        # nothing to do without the bar or without a target
         init = self.module[self.module.index("register('sectionNav'"):]
         self.assertRegex(init, r"if \(!targets\.length\) \{\s*return;\s*\}")
         self.assertLess(init.index("if (!targets.length)"), init.index("addEventListener"))
@@ -443,7 +443,7 @@ class SectionNavSourceTest(unittest.TestCase):
         self.assertRegex(self.module, r"var onChange = guarded\(function \(\) \{\s*if \(frame\) \{\s*return;")
 
     def test_the_page_is_scrolled_by_the_browser_alone(self):
-        # scrollIntoView stops a smooth scroll of the page in Chromium; the
+        # scrollIntoView stops a smooth page scroll in Chromium; the
         # focus stays where the browser puts it; the link is followed as it is
         for pattern in (r"scrollIntoView", r"\.focus\(", r"preventDefault", r"\bscrollTo\b", r"\bscrollBy\b",
                         r"scrollTop\s*[-+]?=[^=]", r"window\.scroll\("):
@@ -466,7 +466,7 @@ class SectionNavSourceTest(unittest.TestCase):
 
     def test_the_section_in_view(self):
         find = self.module[self.module.index("function find()"):self.module.index("function release()")]
-        # the bottom edge of the line, with a slack; at the end of the page the screen
+        # the bar's bottom edge plus some slack; at the end of the page, the whole screen
         self.assertIn("scrolled() && atEnd() ? viewportHeight() :", find)
         self.assertIn("nav.getBoundingClientRect().bottom + NAV_SLACK", find)
         self.assertIn("target.getBoundingClientRect().top < limit", find)

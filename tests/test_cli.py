@@ -1,4 +1,4 @@
-"""Tests of the command line of `build.py` (standard library only)."""
+"""Tests of the `build.py` command line (standard library only)."""
 
 import contextlib
 import io
@@ -69,7 +69,7 @@ def run_main(*args: str, cwd: Path | None = None) -> SimpleNamespace:
 
 
 def subprocess_env() -> dict:
-    """The environment of a child Python: UTF-8 output, no bytecode files."""
+    """A child Python's environment: UTF-8 output, no bytecode files."""
     environ = dict(os.environ)
     environ["COLUMNS"] = COLUMNS
     environ["PYTHONIOENCODING"] = "utf-8"
@@ -311,9 +311,8 @@ class ValidateTest(unittest.TestCase):
         )
 
     def test_a_record_of_more_seats_than_colours_fails(self):
-        # the page of a guest tells the seats of the record apart by colour
-        # alone: three colours, so at most three seats; the message holds
-        # no name
+        # a guest page tells the record's seats apart by colour alone: three
+        # colours, so at most three seats; the message holds no name
         menu, guests = fixtures.plain()
         guests[:3] = [{"token": "lynx-5qd8", "name": "Lev",
                        "seats": [{"number": 1}, {"number": 2, "plusOne": True}, {"number": 3, "plusOne": True},

@@ -1,4 +1,4 @@
-"""Helpers shared by the tests of the build (standard library only)."""
+"""Helpers shared by the build tests (standard library only)."""
 
 import contextlib
 import hashlib
@@ -29,7 +29,7 @@ COMMAND_VARIABLES = ("BUILD_DEBUG", "CI", "GITHUB_ACTIONS")
 
 
 def environment(env: dict | None = None) -> dict:
-    """The environment of a command: without `COMMAND_VARIABLES`, with `env`."""
+    """A command's environment: without `COMMAND_VARIABLES`, with `env`."""
     environ = {key: value for key, value in os.environ.items() if key not in COMMAND_VARIABLES}
     environ.update({"COLUMNS": "80", "PYTHONIOENCODING": "utf-8", "PYTHONDONTWRITEBYTECODE": "1"})
     environ.update(env or {})

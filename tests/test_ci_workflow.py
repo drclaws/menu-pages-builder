@@ -1,5 +1,5 @@
-"""Checks of the CI workflow text (no YAML parser required); the check of
-the built pages also runs on builds of the examples."""
+"""Checks of the CI workflow text (no YAML parser required); the built page
+check also runs on example builds."""
 
 import os
 import re
@@ -18,7 +18,7 @@ ALLOWED_ACTIONS = {"actions/checkout", "actions/setup-python"}
 ALLOWED_EXPRESSIONS = re.compile(
     r"^(matrix\.[\w-]+|github\.ref|github\.workflow|github\.ref != 'refs/heads/main')$")
 
-#: The extensions of media files that must never be tracked.
+#: Media file extensions that must never be tracked.
 MEDIA_PATTERN = r"'\.(png|jpe?g|webp|gif|avif|mp4|mov|webm|ico|svg)$'"
 
 HYGIENE = "Repository hygiene (no tracked media, no tracked build output)"
@@ -45,7 +45,7 @@ STEP_NAMES = [
     CLEAN_TREE,
 ]
 
-#: The commands of the build steps (comments and `set -euo pipefail` aside).
+#: The build step commands (comments and `set -euo pipefail` aside).
 BUILD_COMMANDS = {
     BUILD_MAIN: [
         "python build.py validate",
@@ -104,7 +104,7 @@ def run_blocks(text):
 
 
 def outside_run_blocks(text):
-    """Return the text without the values of the ``run:`` keys (the keys stay)."""
+    """Return the text without the ``run:`` key values (the keys stay)."""
     kept = []
     lines = text.splitlines()
     index = 0
@@ -162,7 +162,7 @@ def steps(text):
 
 
 def step_names(text):
-    """The values of the ``- name:`` lines of the steps, in their order."""
+    """The values of the steps' ``- name:`` lines, in order."""
     return re.findall(r"(?m)^\s*-\s+name:\s*(.*?)\s*$", text)
 
 
@@ -184,7 +184,7 @@ def named_runs(text):
 
 
 def inline_python(block):
-    """The programs of the ``python -c '...'`` commands of a ``run: |`` block.
+    """The programs of the ``python -c '...'`` commands in a ``run: |`` block.
 
     The block is dedented as YAML does; a program runs from the line after
     ``python -c '`` up to a line that is a lone ``'``.
@@ -194,7 +194,7 @@ def inline_python(block):
 
 
 def heredoc_python(block):
-    """The programs of the ``python - ... <<'PY'`` commands of a ``run: |``
+    """The programs of the ``python - ... <<'PY'`` commands in a ``run: |``
     block, dedented as YAML does, with the shell words before ``<<``."""
     script = textwrap.dedent(block.partition("\n")[2]).replace("\\\n", " ")
     return re.findall(r"(?ms)^python - (.*?) <<'PY'\n(.*?)^PY$", script)
@@ -319,7 +319,7 @@ class CiWorkflowTest(unittest.TestCase):
     def test_the_steps_and_their_order(self):
         self.assertEqual(step_names(self.raw), STEP_NAMES)
         self.assertEqual(list(self.named), [HYGIENE, NO_CYRILLIC, UNIT_TESTS, *BUILD_STEPS, CLEAN_TREE])
-        # every command is one of these (the other `run:` is the mapping of `defaults`)
+        # every command is one of these (the other `run:` is the `defaults` mapping)
         commands = [block for block in self.runs if block.startswith("|")]
         self.assertEqual(commands, list(self.named.values()))
         self.assertEqual(len(commands), len(self.runs) - 1)
@@ -353,7 +353,7 @@ class CiWorkflowTest(unittest.TestCase):
 
     def test_cyrillic_check_program(self):
         program = inline_python(self.named[NO_CYRILLIC])[0]
-        # the whole Cyrillic block of Unicode, by code point
+        # the whole Unicode Cyrillic block, by code point
         self.assertIn("0x400 <= ord(char) <= 0x4FF", program)
         self.assertTrue(program.isascii())
         self.assertNotIn("'", program)  # the program is one single-quoted shell word
@@ -467,7 +467,7 @@ class CiWorkflowTest(unittest.TestCase):
             page = next((work / "dist-plain").glob("*/index.html"))
             token = page.parent.name
             original = page.read_text(encoding="utf-8")
-            # the pages that passed above have the links of the line of the sections
+            # the pages that passed above have navigation bar links
             self.assertIn('<a class="section-nav__link" href="#s-seats"', original)
 
             def with_body(markup):
@@ -493,7 +493,7 @@ class CiWorkflowTest(unittest.TestCase):
                     self.assertNotIn(token.lower(), printed)
                     for value in ("nowhere", "/other/"):
                         self.assertNotIn(value, printed)
-            # a link to a part of the same page: the id of its cover
+            # a link within the same page: its cover's id
             for markup in ('<p><a href="#s-cover">Top</a></p>',
                            '<map name="m" id="m"><area shape="rect" coords="0,0,1,1" href="#m" alt=""></map>'):
                 with self.subTest(case=markup):

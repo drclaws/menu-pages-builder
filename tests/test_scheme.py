@@ -1,22 +1,22 @@
-"""The plan of the table on a page: the scheme partial on the objects of the geometry.
+"""The table plan on a page: the scheme partial on the geometry's objects.
 
 The partial `fragments/partials/scheme.html` draws an inline SVG from the
-`scheme` object of `menu_tools._table` with the template engine of the
-build: every number comes from the object, the markup only places it.
-The objects here are built by the geometry for four shapes of table - the
-L-shaped tables of the data sets on 16 and on 19 seats, a straight table with
+`scheme` object of `menu_tools._table` with the build's template engine:
+every number comes from the object, the markup only places it.
+The objects here are built by the geometry for four table shapes - the
+L-shaped tables of the data sets with 16 and 19 seats, a straight table with
 the couple facing each other and a U-shaped one with the couple label upright
 on a vertical arm - and rendered in the frame the seating widget gives the
-partial.  The output goes through the checks of a finished HTML page and of
-an SVG file (`check_html`, `check_svg`).
+partial.  The output goes through the finished HTML page and SVG file checks
+(`check_html`, `check_svg`).
 
-The names in the drawing (the couple label of the staff plan, the names of
-the guest's seats in the text of the guest plan) come from the constants of
-the data sets and of the words, never from literals here.
+The names in the drawing (the couple label on the staff plan, the names of
+the guest's seats in the guest plan's text) come from the data set and word
+constants, never from literals here.
 
 The radii the geometry writes depend on the border widths the style sheet
-draws: the last tests tie those constants of `menu_tools._table` to the
-tokens of `assets/app.css`.
+draws: the last tests tie those `menu_tools._table` constants to the
+`assets/app.css` tokens.
 """
 
 from __future__ import annotations
@@ -126,12 +126,12 @@ def token_contexts(css, context=""):
 
 FRAGMENTS_DIR = ROOT / "fragments"
 APP_CSS = ROOT / "assets" / "app.css"
-#: The frame of the seating widget around the partial.
+#: The seating widget's frame around the partial.
 FRAME = "<!-- with:scheme --><!-- include:partials/scheme --><!-- endwith -->"
 SVG_NAMESPACE = "http://www.w3.org/2000/svg"
 
-#: shape -> (table, couple seats (of the staff plan), guest seats (in the
-#: order of the record), letters of the staff by seat number).
+#: shape -> (table, couple seats (of the staff plan), guest seats (in record
+#: order), staff letters by seat number).
 SHAPES = {
     "l16": (fixtures.l_table_16, [4, 5], [8, 9],
             {1: ["A"], 3: ["N"], 7: ["V"], 10: ["G", "L"], 14: ["L"]}),
@@ -142,8 +142,8 @@ SHAPES = {
     "u20": (u_table, [18, 19], [11, 12], {1: ["N"], 8: ["G", "L"], 20: ["A", "N"]}),
 }
 
-#: The attributes each element of the drawing may have: geometry, classes and
-#: the accessibility of the drawing, nothing else.
+#: The attributes each drawing element may have: geometry, classes and the
+#: drawing's accessibility, nothing else.
 ATTRIBUTES = {
     "svg": {"class", "viewbox", "width", "height", "focusable", "role", "aria-label",
             "aria-hidden"},
@@ -163,12 +163,11 @@ CLASSES = frozenset({
 NUMBER = r"-?\d+(?:\.(?:5|25|75))?"
 NUMBER_ATTRIBUTES = ("width", "height", "cx", "cy", "r", "x", "y")
 
-#: Who sits at the seats of the guest record, in their order.
+#: Who sits at the guest record's seats, in order.
 NAMES = ("Olga", _words.YOUR_GUEST, "Hugo")
 
-#: sha256 of the markup of the L-shaped table on 16 seats: of a guest with
-#: two seats, of a guest with one seat and of the staff; a change of the
-#: partial changes it.
+#: sha256 of the 16-seat L-shaped table's markup: for a guest with two seats,
+#: a guest with one seat and the staff; changing the partial changes it.
 DIGEST = "fb0b611df9099725a326612f515935b766aa07ad4cd1e64785970944b7f508d4"
 
 
@@ -194,7 +193,7 @@ _TEMPLATE = core.parse_template(FRAME, "frame", core.load_fragments(FRAGMENTS_DI
 
 
 def render(scheme: dict, staff_page: bool) -> str:
-    """The partial for a page of the audience, as the build publishes it."""
+    """The partial for the audience's page, as the build publishes it."""
     output = _TEMPLATE.render({"isStaff": staff_page, "scheme": scheme})
     return core.strip_html_comments(output, "frame")
 
@@ -392,7 +391,7 @@ class GuestTest(unittest.TestCase):
                 self.assertEqual(tag["aria-label"], name)
                 self.assertEqual(tag["focusable"], "false")
                 self.assertNotIn("aria-hidden", tag)
-                # no number of a seat: the one number is the count of the seats
+                # no seat number: the one number is the seat count
                 self.assertEqual(re.findall(r"\d+", tag["aria-label"]), ["16"])
 
     def test_the_guest_sees_no_dietary_marks_no_couple_and_no_numbers(self):
@@ -457,7 +456,7 @@ class StaffTest(unittest.TestCase):
                 self.assertNotIn("aria-label", tag)
                 for part in ("seat--you", "seat__ring", "seat-label", "Your seat", "seat--colour"):
                     self.assertNotIn(part, svg)
-                # the couple and the numbers of the seats
+                # the couple and the seat numbers
                 self.assertEqual(svg.count("seat seat--couple "), len(SHAPES[shape][1]))
                 self.assertEqual(len(Elements(svg).of_class("seat__number")), len(staff_object(shape)["seats"]))
                 self.assertIn(fixtures.COUPLE_LABEL.upper(), svg)
@@ -486,7 +485,7 @@ class StaffTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# Values from the data and the branches of the audiences
+# Values from the data and the audience branches
 # --------------------------------------------------------------------------
 
 
@@ -509,8 +508,8 @@ class SafetyTest(unittest.TestCase):
             self.assertEqual(core.check_svg(svg_file(markup)), [])
 
     def test_the_branches_of_the_audiences_guard_against_a_wrong_object(self):
-        # a guest's page never prints badges, the couple or the numbers, even
-        # when the object had them
+        # a guest page never prints badges, the couple or the numbers, even
+        # when the object has them
         guest = guest_object("l16")
         staff = staff_object("l16")
         guest.update(badges=copy.deepcopy(staff["badges"]), couple=copy.deepcopy(staff["couple"]))
@@ -530,7 +529,7 @@ class SafetyTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# The numbers of the geometry and the tokens of the style sheet
+# The geometry's numbers and the style sheet's tokens
 # --------------------------------------------------------------------------
 
 
@@ -543,12 +542,12 @@ def px(value: str) -> Fraction:
 
 
 def token_ties(css: str) -> list[str]:
-    """Where the constants of the geometry and the tokens of `css` disagree.
+    """Where the geometry's constants and the `css` tokens disagree.
 
-    The build computes the radii of the seats from the border widths, so the
-    circle of a seat stays 30 (34) units across whatever the style sheet
-    draws.  The size of the field is the business of the markup alone (the
-    style sheet takes it from the attributes of the drawing).
+    The build computes the seat radii from the border widths, so a seat's
+    circle stays 30 (34) units across whatever the style sheet draws.  The
+    field size is the markup's business alone (the style sheet takes it from
+    the drawing's attributes).
     """
     tokens = token_contexts(css)[""]
     seat, flag = px(tokens["--line-width-seat"]), px(tokens["--line-width-flag"])
@@ -587,7 +586,7 @@ class TokenTieTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# The colours of the seats of a guest
+# The colours of a guest's seats
 # --------------------------------------------------------------------------
 
 #: Dichromacy at full severity, Machado, Oliveira and Fernandes (2009): a
@@ -600,7 +599,7 @@ DEFICIENCIES = {
     "tritanopia": ((1.255528, -0.076749, -0.178779), (-0.078411, 0.930809, 0.147602),
                    (0.004733, 0.691367, 0.303900)),
 }
-#: The least difference of lightness (CIE L*) between two colours of the seats.
+#: The least lightness difference (CIE L*) between two seat colours.
 LIGHTNESS_GAP = 12.5
 
 
@@ -623,7 +622,7 @@ def linear_rgb(colour: str) -> tuple[float, float, float]:
 
 
 def luminance(rgb: tuple[float, float, float]) -> float:
-    """The relative luminance of WCAG 2."""
+    """The WCAG 2 relative luminance."""
     return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]
 
 
@@ -649,9 +648,9 @@ def seat_palette(css: str) -> list[str]:
 
 
 class SeatColoursTest(unittest.TestCase):
-    """The tokens of the colours of a guest's seats against the rules of the
-    page: legible white text, visible on the card, apart in lightness (in
-    grey and with a colour vision deficiency), not the dietary orange."""
+    """The colour tokens of a guest's seats against the page rules: legible
+    white text, visible on the card, apart in lightness (in grey and with a
+    colour vision deficiency), not the dietary orange."""
 
     @classmethod
     def setUpClass(cls):

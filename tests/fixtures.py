@@ -1,26 +1,26 @@
-"""Fictional menu data for the tests: three sets of `menu.json` and `guests.json`.
+"""Fictional menu data for the tests: four sets of `menu.json` and `guests.json`.
 
 Each function returns a fresh `(menu, guests)` pair that a test may change.
 
-* `mockup16` - the menu of the design mockup: an L-shaped table of 16 seats,
+* `mockup16` - the design mockup's menu: an L-shaped table of 16 seats,
   a legend of five dietary notes, five shared starters, two sets of two
   courses, four drinks; a +1 without a name (seats 8-9), the couple at 4-5,
   seats 12 and 13 free.
 * `reserved19` - an L-shaped table of 19 seats with one seat kept free at the
-  end of the short arm and the couple next to each other on the outer side
-  of the long arm by the joint; three starters and one more dish on request
-  for the staff only; two sets (fish and meat); sparkling, white and red wine
-  and soft drinks with a note for the guests.  The records: a guest on the
-  last seat with a +1 on seat 1, a record for two, a +1 without a name and
-  one with a name, seats with dietary notes (one with two), a note to a
-  section, a hidden widget and the staff record.
+  end of the short arm and the couple side by side on the outer side of the
+  long arm by the joint; three starters and one more dish on request for the
+  staff only; two sets (fish and meat); sparkling, white and red wine and
+  soft drinks with a note for the guests.  The records: a guest on the last
+  seat with a +1 on seat 1, a record for two, a +1 without a name and one
+  with a name, seats with dietary notes (one with two), a note on a section,
+  a hidden widget and the staff record.
 * `plain` - no table, no dietary notes, no allergens; three sets, one
   category of drinks, three records (one with a +1) and the staff record.
 * `parts` - `reserved19` with the starters and the main course in one
-  section of two parts under their headings (the staff page has eyebrows of
-  its own) and a section of short texts under headings after the drinks,
+  section of two parts under their headings (the staff page has its own
+  eyebrows) and a section of short texts under headings after the drinks,
   its last part for the staff only; the seats, the food, the drinks and the
-  texts have their labels in the line of the sections, the signature none.
+  texts have labels in the navigation bar, the signature has none.
 
 The dietary notes name what to leave out ("no nuts"), never a reason.
 """
@@ -50,7 +50,7 @@ ALLERGENS = {
     "lactose": {"label": "lactose"},
 }
 
-#: The texts of the staff, the same in every set.
+#: The staff texts, the same in every set.
 STAFF = {
     "updated": "12 June 2030",
     "contact": "Selma (event planner) · +00 000 000 00 00",
@@ -59,7 +59,7 @@ STAFF = {
 
 
 def l_table_16() -> dict:
-    """The L-shaped table of the mockup on 16 seats."""
+    """The mockup's L-shaped table of 16 seats."""
     return {
         "label": "L-shaped table",
         "arms": [
@@ -78,7 +78,7 @@ def l_table_16() -> dict:
 
 
 def l_table_19() -> dict:
-    """An L-shaped table on 19 seats: the long arm along the top, the short
+    """An L-shaped table of 19 seats: the long arm along the top, the short
     one down the right; every side keeps the full pitch of 42 px."""
     return {
         "label": "L-shaped table",
@@ -554,7 +554,7 @@ _RESERVED19_GUESTS = [
 
 
 def reserved19() -> tuple[dict, list]:
-    """An L-shaped table on 19 seats, seat 13 reserved."""
+    """An L-shaped table of 19 seats, seat 13 reserved."""
     return copy.deepcopy(_RESERVED19_MENU), copy.deepcopy(_RESERVED19_GUESTS)
 
 
@@ -682,7 +682,7 @@ SETS = {"mockup16": mockup16, "reserved19": reserved19, "plain": plain, "parts":
 
 
 def names(guests: list, menu: dict | None = None) -> set[str]:
-    """Every name of the people at the table: the records, their seats and the couple."""
+    """Every name at the table: the records, their seats and the couple."""
     found = set()
     for record in guests:
         if isinstance(record.get("name"), str):
@@ -697,7 +697,7 @@ def names(guests: list, menu: dict | None = None) -> set[str]:
 
 
 def tokens(guests: list) -> set[str]:
-    """Every token of the records, the staff record included."""
+    """Every record's token, the staff record included."""
     return {record["token"] for record in guests if isinstance(record.get("token"), str)}
 
 
