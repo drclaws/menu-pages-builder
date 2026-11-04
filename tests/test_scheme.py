@@ -39,7 +39,90 @@ from menu_tools import _core as core  # noqa: E402  (imported after sys.path is 
 from menu_tools import _table, _words  # noqa: E402
 from tests import fixtures  # noqa: E402
 from tests.test_table import straight_table, u_table, wide_l_table  # noqa: E402
-from tests.test_tokens_sync import token_contexts  # noqa: E402
+
+#: Plain properties of `:root` read like tokens: the theme is part of the design.
+ROOT_PROPERTIES = frozenset({"color-scheme"})
+
+COMMENT_RE = re.compile(r"/\*.*?(?:\*/|\Z)", re.DOTALL)
+ROOT_RE = re.compile(r"(?<![\w-]):root\s*\{")
+AT_RULE_RE = re.compile(r"@(media|supports)\b([^{;]*)\{")
+
+
+def split_declarations(body):
+    """Split a rule body at the `;` outside brackets and strings."""
+    parts = []
+    depth = 0
+    quote = ""
+    start = 0
+    for index, char in enumerate(body):
+        if quote:
+            if char == quote and body[index - 1] != "\\":
+                quote = ""
+        elif char in "\"'":
+            quote = char
+        elif char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth = max(0, depth - 1)
+        elif char == ";" and depth == 0:
+            parts.append(body[start:index])
+            start = index + 1
+    parts.append(body[start:])
+    return parts
+
+
+def block_end(text, start):
+    """The index just past the `}` closing the block whose body starts at `start`."""
+    depth = 1
+    end = start
+    while end < len(text) and depth:
+        depth += {"{": 1, "}": -1}.get(text[end], 0)
+        end += 1
+    return end
+
+
+def token_contexts(css, context=""):
+    """{context: {token: value}} of the `:root` rules of a style sheet.
+
+    Tokens are the custom properties and the properties of `ROOT_PROPERTIES`.
+    The context is "" at the top level, otherwise the at-rule preludes with
+    their whitespace collapsed ("@media (min-width: 48em)"); nested blocks
+    join their preludes. Values have their whitespace collapsed; when a token
+    is declared twice in one context the last one wins. Contexts without
+    tokens are left out.
+    """
+    text = COMMENT_RE.sub(" ", css)
+    contexts = {}
+    depth = 0
+    position = 0
+    while position < len(text):
+        char = text[position]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth = max(0, depth - 1)
+        elif char == ":" and depth == 0 and ROOT_RE.match(text, position):
+            start = ROOT_RE.match(text, position).end()
+            end = block_end(text, start)
+            for declaration in split_declarations(text[start:end - 1]):
+                name, colon, value = declaration.partition(":")
+                name = name.strip()
+                if colon and (name.startswith("--") or name in ROOT_PROPERTIES):
+                    contexts.setdefault(context, {})[name] = " ".join(value.split())
+            position = end
+            continue
+        elif char == "@" and depth == 0 and AT_RULE_RE.match(text, position):
+            match = AT_RULE_RE.match(text, position)
+            end = block_end(text, match.end())
+            prelude = " ".join(("@%s %s" % (match.group(1), match.group(2))).split())
+            inner = " ".join((context + " " + prelude).split())
+            for key, tokens in token_contexts(text[match.end():end - 1], inner).items():
+                contexts.setdefault(key, {}).update(tokens)
+            position = end
+            continue
+        position += 1
+    return contexts
+
 
 FRAGMENTS_DIR = ROOT / "fragments"
 APP_CSS = ROOT / "assets" / "app.css"

@@ -44,8 +44,7 @@ Importing this module has no side effects: everything happens inside `main()`.
 
 Exit codes: 0 - success (`--help`, valid data, a finished build, the links,
 a token), 1 - errors in the data or in the finished output, an output
-directory that is not replaced, `links` in CI, or the invitations builder is
-missing in `site/` (the submodule is not checked out), 2 - bad command line.
+directory that is not replaced, `links` in CI, 2 - bad command line.
 """
 
 import argparse
@@ -73,8 +72,6 @@ ASSETS_DIR = "assets"
 TOKENS_FILE = "app.css"
 #: The icon the build writes into `assets/` of the output.
 FAVICON_FILE = "favicon.svg"
-#: The submodule with the code of the invitations builder.
-SITE_DIR = "site"
 
 #: The commands and their one-line descriptions.
 COMMANDS = {
@@ -83,10 +80,6 @@ COMMANDS = {
     "links": "print the address of every page (personal data: for local use only)",
     "token": "print a new token for a record",
 }
-
-
-# The types of the arguments load the bridge when they are first used: `--help`
-# works without the submodule, and `main` reports a missing one.
 
 
 def _base_path_type(value: str) -> str:
@@ -290,21 +283,14 @@ def is_inside(path: Path, directory: Path, *, strict: bool = False) -> bool:
 def check_out(out_dir: Path, data_dir: Path) -> None:
     """Refuse an `--out` whose replacement would destroy anything.
 
-    The menu's own refusals come first - not inside `site/`, the code of the
-    invitations builder, and not inside `--data` - then the rules of the
-    invitations (`check_out_dir`): not the code, the data or the working
-    directory nor a parent of one, not inside `assets/` of the code, and an
-    existing directory only when it looks like a previous build.  The
-    messages never repeat a path: the data is not read yet, so no token is
-    known to hide.
+    First not inside `--data`, then the rules of `check_out_dir`: not the
+    code, the data or the working directory nor a parent of one, not inside
+    `assets/` of the code, and an existing directory only when it looks like
+    a previous build.  The messages never repeat a path: the data is not read
+    yet, so no token is known to hide.
     """
     from menu_tools import _core
 
-    if is_inside(out_dir, CODE_DIR / SITE_DIR):
-        raise _core.BuildError(
-            f"--out must not be {SITE_DIR}/ or lie inside it: it holds the code of the "
-            "invitations builder; choose a separate output directory"
-        )
     if is_inside(out_dir, data_dir, strict=True):
         raise _core.BuildError(
             "--out must not lie inside the data directory (--data): the build never writes "
@@ -532,14 +518,7 @@ def run_command(command: Any, args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Run the command line; argparse exits by itself on `--help` and usage
     errors (code 2)."""
-    try:
-        args = make_parser().parse_args(argv)
-        from menu_tools import _core  # noqa: F401  (loads the invitations builder)
-    except ImportError as exc:
-        if exc.name != "invitations_build":  # not the bridge's own error
-            raise
-        _stderr(f"error: {exc}")
-        return EXIT_ERROR
+    args = make_parser().parse_args(argv)
     return run_command(COMMAND_FUNCTIONS[args.command], args)
 
 

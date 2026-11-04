@@ -191,17 +191,9 @@ class RefusalTest(BuildTestCase):
         self.refused(self.data.parent, "--out must not be a parent of the data directory; choose a separate output directory")
         self.assertEqual(sorted(path.name for path in self.data.iterdir()), ["guests.json", "menu.json"])
 
-    def test_the_code_of_the_invitations_and_of_the_menu(self):
-        message = (
-            "--out must not be site/ or lie inside it: it holds the code of the invitations builder; "
-            "choose a separate output directory"
-        )
-        for out in (ROOT / "site", ROOT / "site" / "dist", ROOT / "site" / "assets"):
-            with self.subTest(out=out.relative_to(ROOT)):
-                self.refused(out, message)
+    def test_the_code_directory(self):
         self.refused(ROOT / "assets" / "dist", "--out must not be inside the assets directory; choose a separate output directory")
         self.refused(ROOT, "--out must not be the code directory; choose a separate output directory")
-        self.assertFalse((ROOT / "site" / "dist").exists())
         self.assertFalse((ROOT / "assets" / "dist").exists())
 
     def test_a_directory_of_somebody_else(self):
