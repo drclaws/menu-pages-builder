@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Builder of personal dinner-menu pages.
 
-    python build.py build    [--data DIR] [--out DIR] [--base-path PATH]
-    python build.py validate [--data DIR]
-    python build.py links    --url URL [--data DIR]
-    python build.py token    [--prefix NAME]
+    python3 build.py build    [--data DIR] [--out DIR] [--base-path PATH]
+    python3 build.py validate [--data DIR]
+    python3 build.py links    --url URL [--data DIR]
+    python3 build.py token    [--prefix NAME]
 
 The builder writes a page per guest and a staff page for the restaurant, each
 at a secret address `<base path>/<token>/`.  Only the Python 3 standard library

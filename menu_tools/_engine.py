@@ -1,23 +1,24 @@
-"""The engine of the build: templates, the report, the output and its checks.
+"""Templates, command reports, and the output directory with its checks.
 
 - `parse_template(source).render(context)` renders a template;
-  `load_template` reads the page template with the fragments next to it
-  (`load_fragments`), and `strip_html_comments` drops the notes of a
-  template from a rendered page.
-- `Report` collects the errors and warnings of a command and hides the
-  tokens it has seen (`redact`); `BuildError`, `TemplateError` and
+  `load_template` reads the page template and the fragments next to it
+  (`load_fragments`), and `strip_html_comments` removes template notes
+  from a rendered page.
+- `Report` collects a command's errors and warnings and hides the tokens
+  it has seen (`redact`); `BuildError`, `TemplateError` and
   `ValidationError` are the expected failures.  `read_json` reads a JSON
   document and reports its problems without quoting the data.
-- `check_output(out_dir, pages)` checks the finished output: nothing but
-  `assets/` and the directories of the pages at the top, no external
-  resources or links, no inline scripts, every local URL resolves inside the
-  output, no file above the hosting size limit;
-  `check_html`, `check_stylesheet` and `check_svg` check one document.
-- `check_out_dir` refuses an output directory whose replacement would destroy
-  anything; `_StagedOutput` assembles the output next to it and swaps it in
-  only when every check has passed; `write_pages` and `copy_assets` fill it.
+- `check_output(out_dir, pages)` checks the finished output: only
+  `assets/` and the page directories at the top level, no external
+  resources or links, no inline scripts, every local URL resolves inside
+  the output, no file above the hosting size limit; `check_html`,
+  `check_stylesheet` and `check_svg` check a single document.
+- `check_out_dir` refuses an output directory whose replacement would
+  destroy anything; `_StagedOutput` assembles the output next to it and
+  swaps it in only when every check has passed; `write_pages` and
+  `copy_assets` fill it.
 - `base_path_argument`, `token_prefix` and `parse_published_url` convert
-  arguments of the command line; `running_in_ci` tells an automated run.
+  command-line arguments; `running_in_ci` detects an automated run.
 
 Importing this module has no side effects.  Only the Python 3 standard
 library is used (Python >= 3.10).

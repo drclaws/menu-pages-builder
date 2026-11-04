@@ -1,27 +1,29 @@
-"""Checks of the finished output of the menu builder.
+"""Checks of the menu builder's finished output.
 
-The output is checked by `check_output` of the engine first: the top of the
-output holds a directory `<token>/` with `index.html` for every page and
-`assets/`, and nothing else.  Every local address of a page, a link as well
-as a resource, has to lie under the base path and name a file of the
-output: a page that leads to another part of the site is an error.
+`check_output` (from `_engine`) runs first: the top level of the output
+holds a `<token>/` directory with `index.html` for every page, `assets/`,
+and nothing else.  Every local address on a page, link or resource, must
+lie under the base path and name a file in the output: a page that leads
+elsewhere on the site is an error.
 
-On top of that, `assets/` holds `app.css`, `app.js` and `favicon.svg` and
-nothing else (any other file of the code that would be published, a font or
-a note, is a problem), no element of a page may carry a `style` attribute,
-inside an inline SVG as well: the styles of the pages live in
-`assets/app.css` alone (`check_output` looks at the URLs of a `style`
-attribute, not at the attribute itself), a page links only to its own
-parts: every `<a>` and `<area>` has an `href` of the form `#<id>`, the id of
-an element of the same page (`check_output` lets a fragment pass without
-looking at its target, and a link to another page of the output would
-resolve), and no file holds the token of a record, in any letter case, its
-own page included: a token is only the name of the directory of its page.
+This module adds four rules:
 
-Every problem is reported in one `OutputError`, at most
-`MAX_REPORTED_PROBLEMS` lines, as `check_output` reports them.  The messages
-never quote the text of a page nor a token, and the directories of the pages
-are shown as `…`: they are named after the tokens.
+- `assets/` holds `app.css`, `app.js` and `favicon.svg` and nothing else
+  (any other published file from the code, a font or a note, is a problem);
+- no element carries a `style` attribute, inside an inline SVG too: the
+  styles live in `assets/app.css` alone (`check_output` looks at the URLs
+  in a `style` attribute, not at the attribute itself);
+- a page links only to its own parts: every `<a>` and `<area>` has an
+  `href` of the form `#<id>` naming an element on the same page
+  (`check_output` lets a fragment pass without looking at its target, and a
+  link to another page in the output would resolve);
+- no file holds a record's token, in any letter case, its own page
+  included: a token is only the name of its page's directory.
+
+All problems are reported in one `OutputError`, at most
+`MAX_REPORTED_PROBLEMS` lines, the way `check_output` reports them.  The
+messages never quote page text or a token, and page directories are shown
+as `…`, since they are named after the tokens.
 """
 
 from __future__ import annotations
@@ -282,9 +284,9 @@ def check_menu_output(
     staff), `numbers` the numbers of their records in `guests.json` for the
     messages (see `token_problems`).
 
-    `check_output` of the engine, then the files of `assets/`, the `style`
-    attributes and the links of the pages and the tokens in the files;
-    every problem together raises one `OutputError`.
+    `check_output` first, then the files in `assets/`, the `style`
+    attributes, the links on the pages and the tokens in the files; all
+    problems together raise one `OutputError`.
     """
     pages = list(pages)
     problems: list[str] = []

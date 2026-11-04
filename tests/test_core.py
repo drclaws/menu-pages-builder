@@ -1,4 +1,4 @@
-"""Tests of the facade of the engine of the build (`menu_tools/_core.py`)."""
+"""Tests of the shared helpers re-exported by `menu_tools._core`."""
 
 import argparse
 import re
@@ -14,12 +14,12 @@ if str(ROOT) not in sys.path:
 from menu_tools import _checks, _engine, _icon, _tokens, _values  # noqa: E402
 from menu_tools import _core as core  # noqa: E402  (imported after sys.path is prepared)
 
-#: The modules the facade takes its names from.
-ENGINE_MODULES = (_engine, _values, _checks, _tokens, _icon)
+#: The modules the re-exported names come from.
+HELPER_MODULES = (_engine, _values, _checks, _tokens, _icon)
 
 
 class ExportsTest(unittest.TestCase):
-    def test_every_exported_name_comes_from_the_engine(self):
+    def test_every_exported_name_comes_from_a_helper_module(self):
         self.assertEqual(len(core.__all__), len(set(core.__all__)))
         aliases = {"SCHEMA_MISSING": (_checks, "MISSING")}
         missing = object()
@@ -30,15 +30,15 @@ class ExportsTest(unittest.TestCase):
                     module, source = aliases[name]
                     self.assertIs(value, getattr(module, source))
                     continue
-                origins = [module for module in ENGINE_MODULES
+                origins = [module for module in HELPER_MODULES
                            if getattr(module, name, missing) is value]
-                self.assertTrue(origins, f"{name} is not a name of the engine")
+                self.assertTrue(origins, f"{name} comes from none of the helper modules")
 
     def test_names_with_two_meanings_come_from_the_right_module(self):
         self.assertIs(core.MISSING, _engine.MISSING)
         self.assertIs(core.SCHEMA_MISSING, _checks.MISSING)
         self.assertIsNot(core.MISSING, core.SCHEMA_MISSING)
-        # of a style sheet
+        # the palette of a style sheet
         self.assertIs(core.load_palette, _tokens.load_palette)
 
     def test_the_sentinels_are_what_the_helpers_return(self):
