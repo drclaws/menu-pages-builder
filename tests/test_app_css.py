@@ -493,18 +493,19 @@ class SchemeStylesTest(unittest.TestCase):
         self.assertNotRegex(self.code, r"seat--regular|seat--none|@media|@container")
 
     def test_the_field_fills_the_card_padding_then_shrinks(self):
+        # the width comes from the width attribute of the drawing (the size of
+        # its field), the height from the ratio of its viewBox: no inline
+        # size and no ratio here, the style sheet knows no size of a field
         field = self.scheme[".scheme"]
-        self.assertEqual(field["aspect-ratio"], "var(--seating-ratio)")
-        self.assertEqual(field["max-inline-size"], "none")
-        self.assertEqual(field["block-size"], "auto")
-        self.assertEqual(field["overflow"], "visible")
-        self.assertEqual(field["justify-self"], "center")
-        self.assertEqual(field["inline-size"],
-                         "min(var(--seating-width), 100% + var(--card-padding) + "
-                         "var(--card-padding) - var(--seating-bleed-gap) - "
-                         "var(--seating-bleed-gap))")
-        self.assertEqual(field["margin-inline"],
-                         "calc(var(--seating-bleed-gap) - var(--card-padding))")
+        self.assertEqual(field, {
+            "justify-self": "center",
+            "max-inline-size": "calc(100% + var(--card-padding) + var(--card-padding) - "
+                               "var(--seating-bleed-gap) - var(--seating-bleed-gap))",
+            "block-size": "auto",
+            "margin-inline": "calc(var(--seating-bleed-gap) - var(--card-padding))",
+            "overflow": "visible",
+        })
+        self.assertNotRegex(self.code, r"(?<![\w-])(inline-size|width|height)\s*:|aspect-ratio")
 
     def test_the_borders_of_the_seats_are_their_tokens(self):
         self.assertEqual(self.scheme[".seat__circle"]["stroke-width"], "var(--line-width-seat)")
@@ -587,7 +588,7 @@ class SchemeStylesTest(unittest.TestCase):
         self.assertEqual(self.print[card]["grid-template-columns"], "auto minmax(0, 1fr)")
         self.assertEqual(self.print[f"{card} > *"], {"grid-column": "1 / -1"})
         self.assertEqual(self.print[f"{card} > .scheme"],
-                         {"grid-column": "1", "inline-size": "var(--seating-width)",
+                         {"grid-column": "1", "max-inline-size": "none",
                           "margin-inline": "0 var(--space-md)"})
         self.assertEqual(self.print[f"{card} > .seat-table"], {"grid-column": "2"})
         self.assertEqual(self.print[".menu--staff .seating__divider"], {"display": "none"})

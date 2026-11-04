@@ -861,6 +861,110 @@ class CoupleTest(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
+# The size of the field
+# --------------------------------------------------------------------------
+
+
+def wide_l_table() -> dict:
+    """An L-shaped table on 18 seats in a field of 360 x 310: one seat at the
+    end of the long arm, 7 over it and 6 under it, lined up with the seats
+    over it; 3 seats on the right of the short arm, the first one facing
+    the seat at the end of the long arm, and one on its left facing the last
+    of them.  The last seat of the top row sits over the middle of the short
+    arm; both arms are 32 px thick."""
+    return {
+        "label": "L-shaped table",
+        "width": 360,
+        "height": 310,
+        "arms": [
+            {"id": "long", "x": 39, "y": 40, "width": 282, "height": 32, "shift": {"top": -1}},
+            {"id": "short", "x": 289, "y": 40, "width": 32, "height": 120},
+        ],
+        "seats": [
+            {"arm": "long", "side": "left"},                                                  # 1
+            {"arm": "long", "side": "top", "count": 7},                                       # 2-8
+            {"arm": "short", "side": "right", "count": 3, "align": [1, None, None]},          # 9-11
+            {"arm": "short", "side": "left", "align": [11]},                                  # 12
+            {"arm": "long", "side": "bottom", "count": 6, "align": [7, 6, 5, 4, 3, 2]},       # 13-18
+        ],
+    }
+
+
+WIDE_CENTRES = {
+    1: (17, 56), 2: (53, 18), 3: (95, 18), 4: (137, 18), 5: (179, 18), 6: (221, 18), 7: (263, 18),
+    8: (305, 18), 9: (343, 56), 10: (343, 98), 11: (343, 140), 12: (267, 140),
+    13: (263, 94), 14: (221, 94), 15: (179, 94), 16: (137, 94), 17: (95, 94), 18: (53, 94),
+}
+
+
+def sized(make, width=None, height=None):
+    """A fixture with the size of its field given (None: left out)."""
+    def build():
+        table = make()
+        for key, value in (("width", width), ("height", height)):
+            table.pop(key, None)
+            if value is not None:
+                table[key] = value
+        return table
+    return build
+
+
+class FieldTest(unittest.TestCase):
+    def test_the_wide_l_table_fits_its_field(self):
+        self.assertEqual(check_table(wide_l_table()), TableCheck([], [], 18))
+        scheme = guest(wide_l_table(), [8])
+        self.assertEqual((scheme["width"], scheme["height"]), ("360", "310"))
+        self.assertEqual(centres(scheme), {n: (px(x), px(y)) for n, (x, y) in WIDE_CENTRES.items()})
+        # seat 8 over the middle of the short arm
+        short = wide_l_table()["arms"][1]
+        self.assertEqual(WIDE_CENTRES[8][0], short["x"] + short["width"] // 2)
+        # its label goes right, past the edge of the default field
+        self.assertEqual(scheme["labels"], [{"x": "326", "y": "18", "anchor": "start"}])
+        for number in range(1, 19):
+            with self.subTest(seat=number):
+                self.assertEqual(len(guest(wide_l_table(), [number])["labels"]), 1)
+        self.assertEqual(staff(wide_l_table(), {15: list("ABCD")}, pair=NO_COUPLE)["width"], "360")
+
+    def test_the_wide_l_table_needs_its_field(self):
+        errors = check_table(sized(wide_l_table)()).errors
+        self.assertEqual(errors, ["table.arms[0]: lies outside the 318x310 field",
+                                  "table.arms[1]: lies outside the 318x310 field"])
+
+    def test_the_default_size_is_318_x_310(self):
+        self.assertEqual((_table.FIELD_WIDTH, _table.FIELD_HEIGHT), (318, 310))
+        for name, (make, pair, own, letters) in FIXTURES.items():
+            with self.subTest(fixture=name):
+                given = sized(make, 318, 310)
+                self.assertEqual(check_table(given()), check_table(make()))
+                self.assertEqual(guest(given(), own), guest(make(), own))
+                self.assertEqual(staff(given(), letters, pair=pair), staff(make(), letters, pair=pair))
+
+    def test_the_edges_of_the_field_follow_its_size(self):
+        # the right seats of the U table at the right edge: room for badges
+        # and the label on the right in a wider field
+        self.assertEqual([badge_capacity(u_table(), n) for n in range(8, 12)], [2] * 4)
+        wide = sized(u_table, 360)
+        self.assertEqual(check_table(wide()).errors, [])
+        self.assertEqual([badge_capacity(wide(), n) for n in range(8, 12)], [4] * 4)
+        cx, cy = centres(guest(wide(), [9]))[9]
+        self.assertNotEqual(label_spots(guest(u_table(), [9]))[0][2], "start")
+        self.assertEqual(label_spots(guest(wide(), [9])), [(str(int(cx) + 21), cy, "start")])
+        # a lower field cuts the bottom seat of the L table off
+        self.assertEqual(check_table(sized(l_table, height=290)()).errors,
+                         ["table.seats[3] (seat 11): does not fit into the 318x290 field"])
+
+    def test_the_limits_are_inclusive(self):
+        for width, height in ((240, 160), (480, 640)):
+            with self.subTest(width=width, height=height):
+                table = {"label": "Small", "width": width, "height": height,
+                         "arms": [{"id": "main", "x": 40, "y": 60, "width": 160, "height": 40}],
+                         "seats": [{"arm": "main", "side": "top", "count": 3},
+                                   {"arm": "main", "side": "bottom", "count": 3}]}
+                self.assertEqual(check_table(table), TableCheck([], [], 6))
+                self.assertEqual(guest(table, [1])["width"], str(width))
+
+
+# --------------------------------------------------------------------------
 # The check of a table description: every rule
 # --------------------------------------------------------------------------
 
@@ -880,7 +984,7 @@ def close_tables() -> dict:
 RULE_CASES = [
     (1, lambda: [], "table: expected an object"),
     (1, changed(l_table, set_item(["couple"], {"seats": [4, 5]})),
-     "table: unknown field (allowed: arms, label, seats)"),
+     "table: unknown field (allowed: arms, height, label, seats, width)"),
     (1, changed(l_table, set_item(["arms", 1, "radius"], 4)),
      "table.arms[1]: unknown field (allowed: height, id, shift, width, x, y)"),
     (1, changed(l_table, set_item(["seats", 3, "number"], 11)),
@@ -903,6 +1007,13 @@ RULE_CASES = [
      "table.arms[0].shift: expected an object with sides as keys"),
     (4, changed(l_table, set_item(["arms", 1, "height"], 251)), "table.arms[1]: lies outside the 318x310 field"),
     (4, changed(l_table, set_item(["arms", 0, "x"], -1)), "table.arms[0]: lies outside the 318x310 field"),
+    (4, changed(l_table, set_item(["width"], 239)), "table.width: expected an integer from 240 to 480 (px)"),
+    (4, changed(l_table, set_item(["width"], 481)), "table.width: expected an integer from 240 to 480 (px)"),
+    (4, changed(l_table, set_item(["width"], 318.0)), "table.width: expected an integer from 240 to 480 (px)"),
+    (4, changed(l_table, set_item(["height"], 159)), "table.height: expected an integer from 160 to 640 (px)"),
+    (4, changed(l_table, set_item(["height"], 641)), "table.height: expected an integer from 160 to 640 (px)"),
+    (4, changed(l_table, set_item(["height"], "310")), "table.height: expected an integer from 160 to 640 (px)"),
+    (4, changed(l_table, set_item(["height"], 250)), "table.arms[1]: lies outside the 318x250 field"),
     (5, changed(l_table, lambda t: t["arms"].append({"id": "inner", "x": 60, "y": 70, "width": 40, "height": 30})),
      "table.arms[2]: lies inside table.arms[0]"),
     (5, changed(l_table, set_item(["arms", 1], {"id": "right", "x": 240, "y": 112, "width": 52, "height": 148})),
@@ -925,6 +1036,8 @@ RULE_CASES = [
      "table.arms[0] side 'top': seats 2-7 squeezed closer than 42 px"),
     (10, changed(straight_table, set_item(["arms", 0, "x"], 30)),
      "table.seats[0] (seat 1): does not fit into the 318x310 field"),
+    (10, changed(l_table, set_item(["height"], 280)),
+     "table.seats[3] (seat 11): does not fit into the 318x280 field"),
     (11, changed(l_table, set_item(["arms", 0, "shift"], {"left": 42})),
      "table.seats[0] (seat 1): the shift moves it off its side"),
     (12, close_tables, "table.seats[0] (seat 1): touches an arm of the table"),
@@ -1020,6 +1133,8 @@ SECRET_CHANGES = [
     set_item(["arms", 0, "id"], "Qzarm"),
     lambda t: t["arms"].append(dict(t["arms"][0], y=19, height=43)),
     set_item(["arms", 0, "x"], "qz57"),
+    set_item(["width"], 777),
+    set_item(["height"], "qz777"),
     set_item(["arms", 0, "width"], 17),
     set_item(["arms", 0, "shift"], {"top": 77}),
     set_item(["arms", 0, "shift"], {"qzside": 1}),
