@@ -137,7 +137,7 @@ class OutputChecksTest(support.TempDirTestCase):
 
     def test_assets_hold_the_style_sheet_the_script_and_the_icon_alone(self):
         self.assertEqual(_output.ASSETS_RULE, "only app.css, app.js and favicon.svg are published in assets/")
-        # files the invitations would publish in assets/: a note, a font, a picture
+        # files a page could use from assets/: a note, a font, a picture
         out = self.make_output()
         (out / "assets" / "notes.txt").write_text("x", encoding="utf-8")
         (out / "assets" / "fonts").mkdir()

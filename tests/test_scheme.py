@@ -2,13 +2,13 @@
 
 The partial `fragments/partials/scheme.html` draws an inline SVG from the
 `scheme` object of `menu_tools._table` with the template engine of the
-invitations: every number comes from the object, the markup only places it.
+build: every number comes from the object, the markup only places it.
 The objects here are built by the geometry for four shapes of table - the
 L-shaped tables of the data sets on 16 and on 19 seats, a straight table with
 the couple facing each other and a U-shaped one with the couple label upright
 on a vertical arm - and rendered in the frame the seating widget gives the
 partial.  The output goes through the checks of a finished HTML page and of
-an SVG file of the invitations builder.
+an SVG file (`check_html`, `check_svg`).
 
 The names in the drawing (the couple label of the staff plan, the names of
 the guest's seats in the text of the guest plan) come from the constants of

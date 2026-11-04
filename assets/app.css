@@ -3,7 +3,7 @@
 
    Numbered sections; new code goes into the section it belongs to:
 
-     1.  Tokens             - the design tokens of the invitations, value for value
+     1.  Tokens             - the general design tokens
      1a. Menu tokens        - the tokens of the menu only
      2.  Fonts              - the system stack, no font files
      3.  Base               - reset, typography, accessibility
@@ -32,9 +32,9 @@
 /* =============================================================================
    1. Tokens
    -----------------------------------------------------------------------------
-   The design tokens of the invitations, value for value (a test compares the
-   values, not the text). Tokens the menu does not use stay as well, so any
-   new or changed token of the invitations needs a decision here.
+   The general design tokens: colours, type, spacing, lines, motion and the
+   sizes of components. Some of them are read by no rule of this file; the
+   tokens of the menu alone are in section 1a.
 
    Names follow roles, not values. A parameter that differs between phone and
    desktop is a pair of unitless numbers `-mobile` / `-desktop` (px at a 16px
@@ -251,7 +251,7 @@
       max(var(--container-gutter-mobile) / 16 * 1rem, var(--container-gutter-desktop) / 16 * 1rem)),
     calc(var(--container-gutter-mobile) / var(--vw-min) * 100vw));
 
-  /* --- Grid; gallery and countdown (components of the invitations) --------- */
+  /* --- Grid; gallery and countdown ------------------------------------------ */
   --grid-columns-mobile: 1;
   --grid-columns-desktop: 2;
   --grid-columns: var(--grid-columns-mobile);
@@ -341,7 +341,7 @@
   --color-cover-text: var(--color-text);
   --cover-veil-opacity: 0.6;
 
-  /* Top bar of the invitations (the folded cover). */
+  /* Top bar of a full-screen cover once it is folded. */
   --cover-bar-padding-block: var(--space-2xs);
   --cover-bar-size: max(var(--tap-min),
     calc(var(--text-base) * var(--line-height-tight) + var(--cover-bar-padding-block) * 2));
@@ -415,7 +415,7 @@
   --schedule-time-max: 45%;
   --schedule-inline-min: 18.5rem;
   --schedule-body-min: 16rem;
-  /* Event tabs of the invitations; the sets have their own --sets-tab-min. */
+  /* Tabs of events; the sets have their own --sets-tab-min. */
   --events-tab-min: 11rem;
   --divider-thickness: var(--line-width-hairline);
   --card-padding: var(--space-md);
@@ -1777,7 +1777,7 @@ html.js .sets__tabs:not([hidden]) ~ .sets__panels > .sets__panel[hidden] {
    -----------------------------------------------------------------------------
    The frame of a menu page: the compact cover, the staff header and what
    depends on the audience. The html element carries menu--guest or
-   menu--staff. The guest page is centred, like an invitation, while the
+   menu--staff. The guest page is centred, like a printed card, while the
    contents of cards start at the left edge; the staff page starts at the
    left edge everywhere, and its text is one step larger (17px at the
    default size on a phone) and its dish names bolder: the page is held in

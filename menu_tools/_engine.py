@@ -8,9 +8,10 @@
   tokens it has seen (`redact`); `BuildError`, `TemplateError` and
   `ValidationError` are the expected failures.  `read_json` reads a JSON
   document and reports its problems without quoting the data.
-- `check_output(out_dir, pages)` checks the finished output: nothing but the
-  expected files, no external resources, no inline scripts, every local link
-  resolves inside the output, no file above the hosting size limit;
+- `check_output(out_dir, pages)` checks the finished output: nothing but
+  `assets/` and the directories of the pages at the top, no external
+  resources or links, no inline scripts, every local URL resolves inside the
+  output, no file above the hosting size limit;
   `check_html`, `check_stylesheet` and `check_svg` check one document.
 - `check_out_dir` refuses an output directory whose replacement would destroy
   anything; `_StagedOutput` assembles the output next to it and swaps it in

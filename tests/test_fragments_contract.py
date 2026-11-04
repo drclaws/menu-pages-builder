@@ -8,8 +8,7 @@ fragment asks for a field that its kind of node does not have, even inside an
 `if:`, and which records every field a fragment asks for: a field of the
 contract that no fragment reads has to be listed in `UNREAD` with its reason.
 The pages are rendered the way the build publishes them (the comments
-removed) and go through the checks of the finished HTML of the invitations
-builder.
+removed) and go through the checks of a finished HTML page (`check_html`).
 """
 
 from __future__ import annotations

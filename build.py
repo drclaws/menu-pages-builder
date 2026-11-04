@@ -83,7 +83,7 @@ COMMANDS = {
 
 
 def _base_path_type(value: str) -> str:
-    """`build --base-path`: the rule of the invitations (a bad value is a bad
+    """`build --base-path`: `/` or `/seg[/seg…]` (a bad value is a bad
     command line, and it is not repeated)."""
     from menu_tools import _core
 
@@ -92,14 +92,14 @@ def _base_path_type(value: str) -> str:
 
 def _url_type(value: str) -> str:
     """`links --url`: an http(s) address without credentials, query or
-    fragment; the trailing '/' is dropped (the rule of the invitations)."""
+    fragment; the trailing '/' is dropped."""
     from menu_tools import _core
 
     return _core.parse_published_url(value)
 
 
 def _prefix_type(value: str) -> str:
-    """`token --prefix`: the characters of a token (the rule of the invitations)."""
+    """`token --prefix`: the characters of a token (A-Z, a-z, 0-9, '_' and '-')."""
     from menu_tools import _core
 
     return _core.token_prefix(value)

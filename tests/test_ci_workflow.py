@@ -340,14 +340,13 @@ class CiWorkflowTest(unittest.TestCase):
         self.assertIn('output="$(tracked dist)"', block)
         self.assertEqual(block.count("exit 1"), 3)
 
-    def test_cyrillic_check_lists_every_tracked_file_and_only_this_repository(self):
+    def test_cyrillic_check_lists_every_tracked_file(self):
         block = self.named[NO_CYRILLIC]
         self.assertIn("set -euo pipefail", block)
         listings = re.findall(r"git\b.*?\bls-files\b[^|]*\|", block)
-        # the whole listing: no path, no filter, not into the submodule
+        # the whole listing: no path, no filter
         self.assertEqual(listings, ["git ls-files -z |"])
         self.assertIn("git ls-files -z | python -c '", block)
-        self.assertNotIn("recurse-submodules", block)
         # Python, not `git grep -P` (PCRE is not in every build of git)
         self.assertNotRegex(block, r"\bgrep\b")
         self.assertEqual(len(inline_python(block)), 1)
@@ -370,8 +369,6 @@ class CiWorkflowTest(unittest.TestCase):
             (work / "clean.txt").write_text("plain\ntext\n", encoding="utf-8")
             (work / "mixed.txt").write_text(
                 f"first\nsecond {CYRILLIC_LETTER}\nthird\n{CYRILLIC_LETTER}\n", encoding="utf-8")
-            (work / "submodule").mkdir()  # a gitlink is a directory: never entered
-            (work / "submodule" / "inner.txt").write_text(CYRILLIC_LETTER, encoding="utf-8")
             (work / f"name-{CYRILLIC_LETTER}.txt").write_text("plain\n", encoding="utf-8")
             # Cyrillic in another encoding: no Cyrillic letter once read as UTF-8
             (work / "legacy.txt").write_bytes(f"first\n{CYRILLIC_LETTER}\n".encode("cp1251"))
@@ -383,11 +380,11 @@ class CiWorkflowTest(unittest.TestCase):
                 return subprocess.run([sys.executable, "-c", program], cwd=str(work),
                                       env=environ, input=listing, capture_output=True)
 
-            clean = check("clean.txt", "submodule")
+            clean = check("clean.txt")
             self.assertEqual(clean.returncode, 0, clean.stderr)
             self.assertEqual(clean.stdout + clean.stderr, b"")
 
-            found = check("clean.txt", "mixed.txt", "submodule", f"name-{CYRILLIC_LETTER}.txt",
+            found = check("clean.txt", "mixed.txt", f"name-{CYRILLIC_LETTER}.txt",
                           "legacy.txt", b"name-\xe6.txt")
             self.assertEqual(found.returncode, 1)
             self.assertEqual(found.stdout, b"")
