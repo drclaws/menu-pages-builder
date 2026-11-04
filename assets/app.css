@@ -490,15 +490,13 @@
   --color-seat-2: #481828;
   --color-seat-3: #2e8442;
 
-  /* Table scheme: seat and flag borders, the ring of the guest's own seat,
-     the field (318 x 310 units) and how close it may come to the card edge:
-     the ring of a guest's seat may reach 4 units past the field, so the gap
-     is a little wider and the ring never touches the border of the card. */
+  /* Table scheme: seat and flag borders, the ring of the guest's own seat
+     and how close the field may come to the card edge: the ring of a
+     guest's seat may reach 4 units past the field, so the gap is a little
+     wider and the ring never touches the border of the card. */
   --line-width-seat: 1.5px;
   --line-width-flag: 2.5px;
   --seat-ring-opacity: 0.22;
-  --seating-width: 318px;
-  --seating-ratio: 318 / 310;
   --seating-bleed-gap: 5px;
   --scheme-font-number: 12px;
   --scheme-font-label: 12px;
@@ -1891,29 +1889,29 @@ html.js .sets__tabs:not([hidden]) ~ .sets__panels > .sets__panel[hidden] {
    6. Scheme
    -----------------------------------------------------------------------------
    The table scheme: an inline SVG of the table with its seats, the badges of
-   the dietary notes and the label of the guest's seat, in a field of
-   318 x 310 units. The markup holds the geometry alone; the colours, lines
-   and type are set here by class. The type sizes are px of the viewBox, so
-   they scale with the drawing. The radii of the seats depend on their
-   border widths (--line-width-seat, --line-width-flag); a test ties the
-   tokens to the numbers of the build. No text-transform here: the build
-   writes the couple label in capitals.
+   the dietary notes and the label of the guest's seat, in a field whose
+   size the markup gives (the viewBox and the width and height, 318 x 310
+   units unless the table sets another one). The markup holds the geometry
+   alone; the colours, lines and type are set here by class. The type sizes
+   are px of the viewBox, so they scale with the drawing. The radii of the
+   seats depend on their border widths (--line-width-seat,
+   --line-width-flag); a test ties the tokens to the numbers of the build.
+   No text-transform here: the build writes the couple label in capitals.
    ========================================================================== */
 
-/* The field: 318 units wide on a wide card. On a narrow card it first takes
-   the padding of the card, up to --seating-bleed-gap from its edge, and only
-   then shrinks with its ratio; it never scrolls. The negative margins give
-   it that room and the grid of the card centres it: its margin box is never
-   wider than the card, so it never overflows. The ring of a seat at the edge
-   of the field is drawn past it. */
+/* The field: as many px wide as it has units (its width attribute; no
+   inline-size here, which would override it) on a wide card. On a narrow
+   card it first takes the padding of the card, up to --seating-bleed-gap
+   from its edge, and only then shrinks, its height following the ratio of
+   its viewBox, type and all; it never scrolls. The negative margins give it
+   that room and the grid of the card centres it: its margin box is never
+   wider than the card, so it never overflows. The ring of a seat at the
+   edge of the field is drawn past it. */
 .scheme {
   justify-self: center;
-  inline-size: min(var(--seating-width),
-    100% + var(--card-padding) + var(--card-padding)
+  max-inline-size: calc(100% + var(--card-padding) + var(--card-padding)
     - var(--seating-bleed-gap) - var(--seating-bleed-gap));
-  max-inline-size: none;
   block-size: auto;
-  aspect-ratio: var(--seating-ratio);
   margin-inline: calc(var(--seating-bleed-gap) - var(--card-padding));
   overflow: visible;
 }
@@ -2228,7 +2226,7 @@ html.js.reveal-on [data-reveal]:not(.is-revealed) {
 
   .menu--staff .seating__card > .scheme {
     grid-column: 1;
-    inline-size: var(--seating-width);
+    max-inline-size: none;
     margin-inline: 0 var(--space-md);
   }
 

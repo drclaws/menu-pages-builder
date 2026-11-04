@@ -40,8 +40,6 @@ MENU_TOKENS = frozenset({
     "--line-width-seat",
     "--line-width-flag",
     "--seat-ring-opacity",
-    "--seating-width",
-    "--seating-ratio",
     "--seating-bleed-gap",
     "--scheme-font-number",
     "--scheme-font-label",

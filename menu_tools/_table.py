@@ -1,7 +1,8 @@
 """The table plan: checks of a table description, seat layout, outline, labels.
 
-A table is a set of rectangular arms in a 318 x 310 field (the user units of
-the SVG `viewBox`) and an ordered list of seats, each on one side of an arm::
+A table is a set of rectangular arms in a field (the user units of the SVG
+`viewBox`; 318 x 310 unless `width` and `height` give another size) and an
+ordered list of seats, each on one side of an arm::
 
     {"label": "L-shaped table",
      "arms": [{"id": "top", "x": 40, "y": 60, "width": 200, "height": 52},
@@ -36,10 +37,22 @@ from typing import Any, NamedTuple
 # Constants (px, the user units of the viewBox)
 # --------------------------------------------------------------------------
 
-#: The field of the plan; tied to the --seating-width and --seating-ratio tokens.
+#: The field of the plan when the table gives no size of its own.
 FIELD_WIDTH = 318
-#: Tied to the --seating-ratio token.
 FIELD_HEIGHT = 310
+#: The limits of `table.width` and `table.height`.  The drawing is scaled
+#: down to the width of its card, type and all: on the narrowest phone (320
+#: px) the card gives it about 280 px, so a field of 480 is drawn at about
+#: 0.6 of its size and the 12 px type of the plan at about 7 px, still
+#: legible; a wider field would make it smaller.  The height does not change
+#: the scale: up to 640, two default fields, the plan stays within a screen
+#: or two.  The lower limits are about three quarters and half of the
+#: default size: an arm with a row of seats on each side fits, and smaller
+#: numbers are more likely a typo than a table.
+MIN_FIELD_WIDTH = 240
+MAX_FIELD_WIDTH = 480
+MIN_FIELD_HEIGHT = 160
+MAX_FIELD_HEIGHT = 640
 
 #: Seat centre to the edge of its arm.
 SEAT_CLEARANCE = 22
@@ -107,7 +120,7 @@ KINDS = ("regular", "couple", "you")
 MARKS = ("none", "flagged")
 ANCHORS = ("start", "end", "middle")
 
-_TABLE_FIELDS = ("arms", "label", "seats")
+_TABLE_FIELDS = ("arms", "height", "label", "seats", "width")
 _ARM_FIELDS = ("height", "id", "shift", "width", "x", "y")
 _SEAT_FIELDS = ("align", "arm", "count", "side")
 _ID_RE = re.compile(r"[a-z][a-z0-9-]{0,39}")
@@ -163,8 +176,16 @@ class _Seat(NamedTuple):
     cy: int  # half px
 
 
+class _Field(NamedTuple):
+    """The size of the field, px."""
+
+    width: int
+    height: int
+
+
 class _Parsed(NamedTuple):
     label: str
+    field: _Field
     arms: list
     ids: dict  # id -> position of the arm
     specs: list  # (arm id, side, item) per seat number
@@ -174,6 +195,7 @@ class _Parsed(NamedTuple):
 
 class _Plan(NamedTuple):
     label: str
+    field: _Field
     arms: list
     ids: dict
     seats: list
@@ -272,14 +294,30 @@ def _parse(table: Any, errors: list[str]) -> _Parsed | None:
     label = table.get("label")
     if not _one_line(label):
         errors.append("table.label: expected a non-empty one-line string")
-    arms, ids = _parse_arms(table.get("arms"), errors)
+    field = _parse_field(table, errors)
+    arms, ids = _parse_arms(table.get("arms"), field, errors)
     specs, total, targets = _parse_seats(table.get("seats"), ids, errors)
     if total is not None:
         errors.extend(_check_targets(specs, targets, total, ids))
-    return _Parsed(label, arms, ids, specs, total, targets)
+    field = field or _Field(FIELD_WIDTH, FIELD_HEIGHT)  # only errors follow a wrong size
+    return _Parsed(label, field, arms, ids, specs, total, targets)
 
 
-def _parse_arms(raw: Any, errors: list[str]) -> tuple[list, dict]:
+def _parse_field(table: dict, errors: list[str]) -> _Field | None:
+    """The size of the field (the default one when the table gives none);
+    None when a size is wrong."""
+    size = {}
+    for key, default, low, high in (("width", FIELD_WIDTH, MIN_FIELD_WIDTH, MAX_FIELD_WIDTH),
+                                    ("height", FIELD_HEIGHT, MIN_FIELD_HEIGHT, MAX_FIELD_HEIGHT)):
+        value = table.get(key, default)
+        if not _is_int(value) or not low <= value <= high:
+            errors.append(f"table.{key}: expected an integer from {low} to {high} (px)")
+        else:
+            size[key] = value
+    return _Field(size["width"], size["height"]) if len(size) == 2 else None
+
+
+def _parse_arms(raw: Any, field: _Field | None, errors: list[str]) -> tuple[list, dict]:
     arms: list[_Arm] = []
     ids: dict[str, int] = {}
     if not isinstance(raw, list) or not raw:
@@ -316,8 +354,8 @@ def _parse_arms(raw: Any, errors: list[str]) -> tuple[list, dict]:
             continue
         x0, y0 = size["x"], size["y"]
         x1, y1 = x0 + size["width"], y0 + size["height"]
-        if x0 < 0 or y0 < 0 or x1 > FIELD_WIDTH or y1 > FIELD_HEIGHT:
-            errors.append(f"{where}: lies outside the {FIELD_WIDTH}x{FIELD_HEIGHT} field")
+        if field is not None and (x0 < 0 or y0 < 0 or x1 > field.width or y1 > field.height):
+            errors.append(f"{where}: lies outside the {field.width}x{field.height} field")
             continue
         if good:
             arms.append(_Arm(index, arm_id, x0, y0, x1, y1, shift))
@@ -826,11 +864,11 @@ def _check(table: Any) -> tuple[TableCheck, _Plan | None]:
     seats = _place(specs, arms, targets)
     errors = _check_aligned(seats, specs, arms, targets, warnings)
     if not errors:
-        errors = _check_seats(seats, arms)
+        errors = _check_seats(seats, arms, parsed.field)
     if errors:
         return TableCheck(errors, warnings, total), None
 
-    plan = _Plan(parsed.label, arms, parsed.ids, seats, _outline(arms))
+    plan = _Plan(parsed.label, parsed.field, arms, parsed.ids, seats, _outline(arms))
     # Any seat can be the one seat of a guest, so every seat needs room for
     # "You".  With the constants above the label of a seat always fits onto
     # its own arm; the check guards the layout against a change of the
@@ -937,7 +975,7 @@ def _check_aligned(
     return errors
 
 
-def _check_seats(seats: Sequence[_Seat], arms: Sequence[_Arm]) -> list[str]:
+def _check_seats(seats: Sequence[_Seat], arms: Sequence[_Arm], field: _Field) -> list[str]:
     """Each seat in the field, on its side, clear of the arms and of the other seats."""
     errors = []
     edge = YOU_DIAMETER  # half px: the radius of a guest seat
@@ -945,9 +983,9 @@ def _check_seats(seats: Sequence[_Seat], arms: Sequence[_Arm]) -> list[str]:
     for seat in seats:
         where = _seat_where(seat)
         if not (
-            edge <= seat.cx <= 2 * FIELD_WIDTH - edge and edge <= seat.cy <= 2 * FIELD_HEIGHT - edge
+            edge <= seat.cx <= 2 * field.width - edge and edge <= seat.cy <= 2 * field.height - edge
         ):
-            errors.append(f"{where}: does not fit into the {FIELD_WIDTH}x{FIELD_HEIGHT} field")
+            errors.append(f"{where}: does not fit into the {field.width}x{field.height} field")
         (a, b), = _free_parts(seat.arm, seat.side, arms)
         along = seat.cx if seat.side in ("top", "bottom") else seat.cy
         if not 2 * a <= along <= 2 * b:
@@ -1079,9 +1117,10 @@ def _label_spot(seat: _Seat, plan: _Plan) -> _Spot | None:
     the other seats; the arms are avoided when possible (first pass), else
     the label may lie on an arm.  None when there is no room."""
     arm_boxes = [_arm_box(arm) for arm in plan.arms]
+    width, height = plan.field
     for avoid_arms in (True, False):
         for box, x, y, anchor in _label_candidates(seat):
-            if box[0] < 0 or box[1] < 0 or box[2] > 2 * FIELD_WIDTH or box[3] > 2 * FIELD_HEIGHT:
+            if box[0] < 0 or box[1] < 0 or box[2] > 2 * width or box[3] > 2 * height:
                 continue
             if avoid_arms and any(_overlap(box, other) for other in arm_boxes):
                 continue
@@ -1095,14 +1134,14 @@ def _label_spot(seat: _Seat, plan: _Plan) -> _Spot | None:
     return None
 
 
-def _badge_spots(seat: _Seat) -> list[tuple[int, int]]:
+def _badge_spots(seat: _Seat, field: _Field) -> list[tuple[int, int]]:
     """The badge centres that fit into the field, in the order they are taken."""
     spots = []
     for dx, dy in _BADGE_SPOTS:
         x, y = seat.cx + 2 * dx, seat.cy + 2 * dy
         if (
-            2 * BADGE_RADIUS <= x <= 2 * (FIELD_WIDTH - BADGE_RADIUS)
-            and 2 * BADGE_RADIUS <= y <= 2 * (FIELD_HEIGHT - BADGE_RADIUS)
+            2 * BADGE_RADIUS <= x <= 2 * (field.width - BADGE_RADIUS)
+            and 2 * BADGE_RADIUS <= y <= 2 * (field.height - BADGE_RADIUS)
         ):
             spots.append((x, y))
     return spots
@@ -1123,7 +1162,7 @@ def badge_capacity(table: Any, number: int) -> int:
     plan = _checked(table)
     if not _is_int(number) or not 1 <= number <= len(plan.seats):
         raise TableError(f"number: expected a seat number from 1 to {len(plan.seats)}")
-    return min(MAX_BADGES, len(_badge_spots(plan.seats[number - 1])))
+    return min(MAX_BADGES, len(_badge_spots(plan.seats[number - 1], plan.field)))
 
 
 def guest_scheme(table: Any, *, own_seats: Sequence[int], mine_text: str) -> dict:
@@ -1196,7 +1235,7 @@ def staff_scheme(
     badges = []
     for number in sorted(flagged):
         items = flagged[number]
-        spots = _badge_spots(plan.seats[number - 1])
+        spots = _badge_spots(plan.seats[number - 1], plan.field)
         if len(items) > min(MAX_BADGES, len(spots)):
             raise TableError(f"seat {number}: no room for {len(items)} badges")
         for letter, (x, y) in zip(items, sorted(spots[: len(items)], key=lambda p: (p[1], p[0]))):
@@ -1271,8 +1310,8 @@ def _scheme(
             "vertical": caption.vertical,
         }
     return {
-        "width": str(FIELD_WIDTH),
-        "height": str(FIELD_HEIGHT),
+        "width": str(plan.field.width),
+        "height": str(plan.field.height),
         "hidden": hidden,
         "tableLabel": plan.label,
         "total": str(len(plan.seats)),

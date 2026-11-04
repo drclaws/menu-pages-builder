@@ -15,9 +15,8 @@ the guest's seats in the text of the guest plan) come from the constants of
 the data sets and of the words, never from literals here.
 
 The radii the geometry writes depend on the border widths the style sheet
-draws, and its field on the size the style sheet gives the drawing: the last
-tests tie those constants of `menu_tools._table` to the tokens of
-`assets/app.css`.
+draws: the last tests tie those constants of `menu_tools._table` to the
+tokens of `assets/app.css`.
 """
 
 from __future__ import annotations
@@ -39,7 +38,7 @@ if str(ROOT) not in sys.path:
 from menu_tools import _core as core  # noqa: E402  (imported after sys.path is prepared)
 from menu_tools import _table, _words  # noqa: E402
 from tests import fixtures  # noqa: E402
-from tests.test_table import straight_table, u_table  # noqa: E402
+from tests.test_table import straight_table, u_table, wide_l_table  # noqa: E402
 from tests.test_tokens_sync import token_contexts  # noqa: E402
 
 FRAGMENTS_DIR = ROOT / "fragments"
@@ -174,6 +173,18 @@ class MarkupTest(unittest.TestCase):
                 self.assertEqual(core.check_html(html_page(svg), lambda _path: False), [])
                 self.assertEqual(core.check_svg(svg_file(svg)), [])
                 core.check_rendered(html_page(svg))
+
+    def test_a_field_of_another_size_sizes_the_drawing(self):
+        table = wide_l_table()
+        for audience, scheme in (("guest", _table.guest_scheme(table, own_seats=[8], mine_text="x")),
+                                 ("staff", _table.staff_scheme(table, couple_seats=[], couple_label=None,
+                                                               couple_arm=None, letters={15: ["A"]}))):
+            with self.subTest(audience=audience):
+                svg = render(scheme, audience == "staff")
+                self.assertTrue(svg.startswith('\n<svg class="scheme" viewBox="0 0 360 310" '
+                                               'width="360" height="310" focusable="false"'))
+                self.assertEqual(core.check_html(html_page(svg), lambda _path: False), [])
+                self.assertEqual(core.check_svg(svg_file(svg)), [])
 
     def test_attributes_hold_geometry_classes_and_accessibility_only(self):
         for shape, audience, _scheme, svg in every_drawing():
@@ -453,17 +464,15 @@ def token_ties(css: str) -> list[str]:
 
     The build computes the radii of the seats from the border widths, so the
     circle of a seat stays 30 (34) units across whatever the style sheet
-    draws; the field is the viewBox the style sheet sizes.
+    draws.  The size of the field is the business of the markup alone (the
+    style sheet takes it from the attributes of the drawing).
     """
     tokens = token_contexts(css)[""]
     seat, flag = px(tokens["--line-width-seat"]), px(tokens["--line-width-flag"])
-    width, height = (Fraction(part) for part in tokens["--seating-ratio"].split("/"))
     half = Fraction(1, 2)
     expected = {
         "--line-width-seat": (seat, Fraction(_table.SEAT_STROKE)),
         "--line-width-flag": (flag, Fraction(_table.FLAG_STROKE)),
-        "--seating-width": (px(tokens["--seating-width"]), Fraction(_table.FIELD_WIDTH)),
-        "--seating-ratio": (width / height, Fraction(_table.FIELD_WIDTH, _table.FIELD_HEIGHT)),
         "SEAT_R": (Fraction(_table.SEAT_R), _table.SEAT_DIAMETER * half - seat * half),
         "FLAG_R": (Fraction(_table.FLAG_R), _table.SEAT_DIAMETER * half - flag * half),
         "YOU_R": (Fraction(_table.YOU_R), _table.YOU_DIAMETER * half - seat * half),
@@ -483,18 +492,13 @@ class TokenTieTest(unittest.TestCase):
 
     def test_a_drift_on_either_side_is_caught(self):
         for old, new, name in (("--line-width-seat: 1.5px;", "--line-width-seat: 2px;", "SEAT_R"),
-                               ("--line-width-flag: 2.5px;", "--line-width-flag: 3px;", "FLAG_R"),
-                               ("--seating-width: 318px;", "--seating-width: 320px;",
-                                "--seating-width"),
-                               ("--seating-ratio: 318 / 310;", "--seating-ratio: 4 / 3;",
-                                "--seating-ratio")):
+                               ("--line-width-flag: 2.5px;", "--line-width-flag: 3px;", "FLAG_R")):
             with self.subTest(token=old):
                 self.assertEqual(self.css.count(old), 1)
                 problems = token_ties(self.css.replace(old, new))
                 self.assertTrue(problems)
                 self.assertTrue(any(problem.startswith(name) for problem in problems), problems)
-        for constant, value in (("SEAT_STROKE", "2"), ("YOU_R", "16"), ("RING_WIDTH", 5),
-                                ("FIELD_HEIGHT", 300)):
+        for constant, value in (("SEAT_STROKE", "2"), ("YOU_R", "16"), ("RING_WIDTH", 5)):
             with self.subTest(constant=constant), mock.patch.object(_table, constant, value):
                 self.assertTrue(token_ties(self.css))
 
