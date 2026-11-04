@@ -15,8 +15,8 @@ The record's seat names appear in the names under the plan (`names`) and in
 the plan's text (`scheme.planText`), nowhere else on the page.  Tokens,
 other records, requirements, allergens, the couple and the names at other
 seats never reach the code that builds a guest page.  The staff page reads
-the whole menu and the records without their tokens and notes.  No page holds a token: a record's token names its page directory
-and nothing else.
+the whole menu and the records without their tokens and notes.  No page
+holds a token: a record's token names its page directory and nothing else.
 
 A guest page names no seat by its number: its table plan shows the
 record's seats each in a colour of its own (`_table.SEAT_COLOURS`), and the

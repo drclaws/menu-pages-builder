@@ -80,7 +80,7 @@ MAX_BADGES = 4
 #: Seat centre to the near edge of the label of a guest's seat ("You"):
 #: the edge of the ring.
 LABEL_GAP = RING_RADIUS
-#: The box kept for the label, from the word (`label_width`): 12 px bold
+#: The box kept for the label, from the word (`label_box_width`): 12 px bold
 #: type is about 7 px per character ("You" is about 23 px wide), and the box
 #: is never narrower than the one for "You".
 MIN_LABEL_WIDTH = 26
