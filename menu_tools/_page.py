@@ -6,16 +6,16 @@ strings, numbers and booleans, in which every field always exists (`""`,
 have passed the checks in `menu_tools._schema`.
 
 Privacy by construction.  A guest page is built from two projections only:
-`public_menu` (the shared texts outside the `staff` keys and the staff-only
-parts, the names and ingredients of the dishes guests see, their sets, the
-guest fields of their drinks, the table) and `own_record` (the name, the
-seat numbers, which of them a companion takes, the seat names, the section
-switches and notes).  The record's seat names appear in the names under the
-plan (`names`) and in the plan's text (`scheme.mine`), nowhere else on the
-page.  Tokens, other records, requirements, allergens, the couple and the
-names at other seats never reach the code that builds a guest page.  The
-staff page reads the whole menu and the records without their tokens and
-notes.  No page holds a token: a record's token names its page directory
+`public_menu` (the language and the words of the pages, the shared texts
+outside the `staff` keys and the staff-only parts, the names and
+ingredients of the dishes guests see, their sets, the guest fields of their
+drinks, the table) and `own_record` (the name, the seat numbers, which of
+them a companion takes, the seat names, the section switches and notes).
+The record's seat names appear in the names under the plan (`names`) and in
+the plan's text (`scheme.planText`), nowhere else on the page.  Tokens,
+other records, requirements, allergens, the couple and the names at other
+seats never reach the code that builds a guest page.  The staff page reads
+the whole menu and the records without their tokens and notes.  No page holds a token: a record's token names its page directory
 and nothing else.
 
 A guest page names no seat by its number: its table plan shows the
@@ -35,8 +35,10 @@ key; the staff page shows those under it when they are set.  A set card
 under a heading uses the next heading level (`nested`), and the heading
 labels its tab list.
 
-The words joined with numbers and names come from `menu_tools._words`; the
-table scheme is built by `menu_tools._table` (`guest_scheme`,
+The words of the pages come from `menu_tools._words`: the root holds the
+language tag (`lang`) and the fixed texts the markup reads (`strings`);
+every text that joins words with numbers, names or data is worded here.
+The table scheme is built by `menu_tools._table` (`guest_scheme`,
 `staff_scheme`).
 
 Standard library only; no input/output.
@@ -44,6 +46,7 @@ Standard library only; no input/output.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
@@ -56,6 +59,9 @@ INLINE_LAYOUT = "inline"
 #: The widget that heads a part of a section.
 HEADING = "heading"
 STAFF_FIELDS = ("updated", "contact", "reminder")
+#: The staff texts as the page shows them: "updated 12 June 2030",
+#: "Contact on the night: Selma".
+STAFF_TEXT_FIELDS = ("updatedText", "contactText")
 
 
 class Settings(NamedTuple):
@@ -113,15 +119,17 @@ def _audience(item: dict) -> str:
     return item.get("audience", "all")
 
 
-def _root(source: dict, settings: Settings, *, is_staff: bool) -> dict:
+def _root(source: dict, settings: Settings, words: _words.Words, *, is_staff: bool) -> dict:
     return {
+        "lang": words.lang,
+        "strings": words.markup(),
         "isStaff": is_staff,
         "coupleNames": source["coupleNames"],
         "event": {key: source["event"][key] for key in EVENT_FIELDS},
         "assetsPath": settings.assets_path,
         "faviconPath": f"{settings.assets_path}/favicon.svg",
         "themeColor": settings.theme_color,
-        "staff": {key: "" for key in STAFF_FIELDS},
+        "staff": {key: "" for key in STAFF_FIELDS + STAFF_TEXT_FIELDS},
         "counters": {"guests": 0, "notes": 0, "guestsText": "", "notesText": "", "tableLabel": ""},
         "nav": [],
         "sections": [],
@@ -165,11 +173,18 @@ def _dish(dish: dict) -> dict:
 
 
 def _set(
-    set_id: str, item: dict, widget_dom_id: str, courses: list[dict], swap_lines: list[str], nested: bool
+    set_id: str,
+    item: dict,
+    widget_dom_id: str,
+    courses: list[dict],
+    swap_lines: list[str],
+    nested: bool,
+    words: _words.Words,
 ) -> dict:
     """A set card; `nested`: it stands under a part's heading (its own title
     is a level lower).  Every card carries the flag, since the fragment reads
     the cards, not the widget."""
+    pairing = _text(item.get("pairing"))
     return {
         "id": set_id,
         "domId": f"{widget_dom_id}--set-{set_id}",
@@ -177,7 +192,8 @@ def _set(
         "hint": _text(item.get("hint")),
         "eyebrow": _text(item.get("eyebrow")),
         "courses": courses,
-        "pairing": _text(item.get("pairing")),
+        "pairing": pairing,
+        "pairingText": _words.pairing_text(words, pairing),
         "swapLines": swap_lines,
         "nested": nested,
     }
@@ -235,9 +251,12 @@ def public_menu(menu: dict) -> dict:
     data); so are the `staff` keys, the requirements, the allergens, the
     couple (a guest's plan does not show it), the dish, set and drink fields
     a guest does not see, and every dish, set or drink that no part for the
-    guests refers to.
+    guests refers to.  The language and the menu's own words stay: they are
+    the words of every page and hold no guest's data.
     """
     public: dict[str, Any] = {
+        "lang": menu.get("lang", _words.DEFAULT_LANG),
+        "strings": copy.deepcopy(menu.get("strings") or {}),
         "coupleNames": menu["coupleNames"],
         "event": {key: menu["event"][key] for key in EVENT_FIELDS},
         "table": menu.get("table"),
@@ -365,9 +384,10 @@ class _GuestPage:
         self.own = own
         self.settings = settings
         self.usage = usage
+        self.words = _words.Words.of(public)
 
     def tree(self) -> dict:
-        root = _root(self.public, self.settings, is_staff=False)
+        root = _root(self.public, self.settings, self.words, is_staff=False)
         for section in self.public["sections"]:
             _add_section(root, self.section(section), section.get("nav", ""))
         return root
@@ -398,7 +418,7 @@ class _GuestPage:
         if not tree["widgets"] and not tree["note"]:
             return None
         has_seating = any(widget is not None and widget["type"] == "seating" for widget in section["widgets"])
-        default = _words.section_title(len(self.own["seats"])) if has_seating else ""
+        default = _words.section_title(self.words, len(self.own["seats"])) if has_seating else ""
         tree["title"] = section["title"] or default
         tree["eyebrow"] = section["eyebrow"]
         return tree
@@ -426,7 +446,7 @@ class _GuestPage:
                 self.usage.sets.add(set_id)
                 self.usage.dishes.update(entry["courses"])
                 courses = [_dish(public["dishes"][dish_id]) for dish_id in entry["courses"]]
-                items.append(_set(set_id, entry, dom_id, courses, [], heading is not None))
+                items.append(_set(set_id, entry, dom_id, courses, [], heading is not None, self.words))
             return {**base, "labelledBy": heading or labelled_by, "items": items, "note": widget["note"],
                     "multiple": len(items) > 1}
         if kind == "drinks":
@@ -454,9 +474,10 @@ class _GuestPage:
     def seating(self, widget: dict, base: dict) -> dict:
         """The record's seats: a name per seat, coloured by the seat's place
         in the record, and the plan with the seats in those colours."""
+        words = self.words
         seats = self.own["seats"]
         numbers = [seat["number"] for seat in seats]
-        names = _words.seat_names(self.own["name"], [seat["name"] for seat in seats])
+        names = _words.seat_names(words, self.own["name"], [seat["name"] for seat in seats])
         tree = _seating(base)
         # checked data: a record has no more seats than there are colours
         tree["names"] = [
@@ -464,7 +485,10 @@ class _GuestPage:
         ]
         table = self.public["table"]
         if table is not None and widget["showScheme"]:
-            tree["scheme"] = _table.guest_scheme(table, own_seats=numbers, mine_text=_words.colour_key(names))
+            text = _words.plan_text(words, table["label"], len(_table.expand_seats(table)), names)
+            tree["scheme"] = _table.guest_scheme(
+                table, own_seats=numbers, plan_text=text, label_width=_table.label_box_width(words["you"])
+            )
         return tree
 
 
@@ -481,13 +505,14 @@ class _StaffPage:
         self.menu = menu
         self.settings = settings
         self.usage = usage
+        self.words = _words.Words.of(menu)
         self.requirements = menu.get("requirements") or {}
         order = {requirement_id: position for position, requirement_id in enumerate(self.requirements)}
 
         def legend_order(items: list) -> list:
             return sorted(items, key=lambda requirement_id: order[requirement_id])
 
-        #: seat -> who sits there
+        #: seat -> who sits there (`hostName`: whose guest a +1 is)
         self.occupants: dict[int, dict] = {}
         for member in (menu.get("couple") or {}).get("members", []):
             self.occupants[member["seat"]] = {
@@ -533,17 +558,23 @@ class _StaffPage:
 
     def tree(self) -> dict:
         menu = self.menu
-        root = _root(menu, self.settings, is_staff=True)
+        words = self.words
+        root = _root(menu, self.settings, words, is_staff=True)
         staff = menu.get("staff") or {}
-        root["staff"] = {key: _text(staff.get(key)) for key in STAFF_FIELDS}
+        texts = {key: _text(staff.get(key)) for key in STAFF_FIELDS}
+        root["staff"] = {
+            **texts,
+            "updatedText": _words.updated_text(words, texts["updated"]),
+            "contactText": _words.contact_text(words, texts["contact"]),
+        }
         guests = len(self.occupants)
         notes = sum(1 for occupant in self.occupants.values() if occupant["requirements"])
         table = menu.get("table")
         root["counters"] = {
             "guests": guests,
             "notes": notes,
-            "guestsText": _words.guests_text(guests),
-            "notesText": _words.notes_text(notes),
+            "guestsText": _words.guests_text(words, guests),
+            "notesText": _words.notes_text(words, notes),
             "tableLabel": table["label"] if table else "",
         }
         for section in menu["sections"]:
@@ -577,7 +608,8 @@ class _StaffPage:
         staff = section.get("staff") or {}
         has_seating = any(_audience(widget) != "guest" and widget["type"] == "seating" for widget in section["widgets"])
         tree["title"] = (
-            _text(staff.get("title")) or _text(section.get("title")) or (_words.STAFF_SEATING if has_seating else "")
+            _text(staff.get("title")) or _text(section.get("title"))
+            or (self.words["staffSeating"] if has_seating else "")
         )
         tree["eyebrow"] = _text(staff.get("eyebrow")) or _text(section.get("eyebrow"))
         return tree
@@ -588,6 +620,7 @@ class _StaffPage:
         kind = widget["type"]
         base = {"type": kind, "domId": dom_id, "labelledBy": labelled_by}
         menu = self.menu
+        words = self.words
         staff = widget.get("staff") or {}
         if kind == "text":
             return {**base, "text": widget["text"], "variant": widget.get("variant", DEFAULT_VARIANT)}
@@ -604,7 +637,9 @@ class _StaffPage:
             for dish_id in widget["items"]:
                 item = self.dish(dish_id)
                 swaps = (menu["dishes"][dish_id].get("staff") or {}).get("swaps") or {}
-                item["swapLines"] = [_words.dish_swap_line(seats, text) for seats, _id, text in self.swaps(swaps)]
+                item["swapLines"] = [
+                    _words.dish_swap_line(words, seats, text) for seats, _id, text in self.swaps(swaps)
+                ]
                 items.append(item)
             self.usage.dishes.update(widget["items"])
             self.usage.staff_dishes.update(widget["items"])
@@ -618,11 +653,13 @@ class _StaffPage:
                     found += self.swaps((menu["dishes"][dish_id].get("staff") or {}).get("swaps") or {})
                 found.sort(key=lambda swap: swap[0][0])
                 lines = [
-                    _words.set_swap_line(seats, self.requirements[requirement_id]["label"], text, first=position == 0)
+                    _words.set_swap_line(
+                        words, seats, self.requirements[requirement_id]["label"], text, first=position == 0
+                    )
                     for position, (seats, requirement_id, text) in enumerate(found)
                 ]
                 courses = [self.dish(dish_id) for dish_id in entry["courses"]]
-                items.append(_set(set_id, entry, dom_id, courses, lines, heading is not None))
+                items.append(_set(set_id, entry, dom_id, courses, lines, heading is not None, words))
                 self.usage.sets.add(set_id)
                 self.usage.dishes.update(entry["courses"])
                 self.usage.staff_dishes.update(entry["courses"])
@@ -637,7 +674,7 @@ class _StaffPage:
                     drink = drinks["items"][drink_id]
                     drink_staff = drink.get("staff") or {}
                     reminders = [
-                        _words.drink_reminder(seats, text)
+                        _words.drink_reminder(words, seats, text)
                         for seats, _id, text in self.swaps(drink_staff.get("swaps") or {})
                     ]
                     listed.append({
@@ -706,7 +743,7 @@ class _StaffPage:
                 "number": number,
                 "name": "",
                 "isPlusOne": False,
-                "hostName": "",
+                "hostLine": "",
                 "roleLabel": "",
                 "isCouple": False,
                 "isFree": True,
@@ -716,7 +753,7 @@ class _StaffPage:
             "number": number,
             "name": occupant["name"],
             "isPlusOne": occupant["isPlusOne"],
-            "hostName": occupant["hostName"],
+            "hostLine": _words.host_line(self.words, occupant["hostName"]),
             "roleLabel": occupant["roleLabel"],
             "isCouple": occupant["isCouple"],
             "isFree": False,

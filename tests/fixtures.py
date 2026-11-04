@@ -21,8 +21,13 @@ Each function returns a fresh `(menu, guests)` pair that a test may change.
   eyebrows) and a section of short texts under headings after the drinks,
   its last part for the staff only; the seats, the food, the drinks and the
   texts have labels in the navigation bar, the signature has none.
+* `serbian` - `reserved19` in Serbian, in the Latin script ("lang":
+  "sr-Latn"): every word of the pages in `strings` (plural forms one, few
+  and other), the texts of the menu and the names with diacritics (č ć đ š
+  ž), the badge letters Č and Ž.
 
-The dietary notes name what to leave out ("no nuts"), never a reason.
+The dietary notes name what to leave out ("no nuts"), never a reason.  The
+Serbian texts are fictional too.
 """
 
 import copy
@@ -677,8 +682,280 @@ def parts() -> tuple[dict, list]:
     return menu, guests
 
 
+# --------------------------------------------------------------------------
+# serbian
+# --------------------------------------------------------------------------
+
+#: Every word of the pages in Serbian (Latin script).
+SERBIAN_STRINGS = {
+    "pageTitle": "Jelovnik večere",
+    "staffVersion": "Verzija za osoblje · ne za goste",
+    "updated": "ažurirano {date}",
+    "contact": "Kontakt tokom večeri: {contact}",
+    "sections": "Odeljci",
+    "tablePlan": "Raspored stola: {table}, {seats}. {yours}: {colours}",
+    "seatCount": {"one": "{n} mesto", "few": "{n} mesta", "other": "{n} mesta"},
+    "you": "Vi",
+    "seatNumber": "Br.",
+    "guestAndNotes": "Gost · napomene o ishrani",
+    "guestOf": "gost: {name}",
+    "nameBlank": "[ime]",
+    "noRestrictions": "bez ograničenja",
+    "pairedWith": "Uz meni: {pairing}",
+    "seat": "Mesto",
+    "seats": "Mesta",
+    "seatInline": "mesto",
+    "seatsInline": "mesta",
+    "and": "i",
+    "yourGuest": "vaš gost",
+    "seatColours": ["plava", "tamnocrvena", "zelena"],
+    "swapFirst": "Ako bira",
+    "swapNext": "Za",
+    "yourSeat": "Vaše mesto",
+    "yourSeats": "Vaša mesta",
+    "staffSeating": "Raspored sedenja i ishrana",
+    "guestCount": {"one": "{n} gost", "few": "{n} gosta", "other": "{n} gostiju"},
+    "noteCount": {"one": "{n} napomena o ishrani", "few": "{n} napomene o ishrani", "other": "{n} napomena o ishrani"},
+}
+
+SERBIAN_COUPLE_NAMES = "Ivan i Vesna"
+
+_SERBIAN_MENU = {
+    "schemaVersion": 1,
+    "lang": "sr-Latn",
+    "strings": SERBIAN_STRINGS,
+    "coupleNames": SERBIAN_COUPLE_NAMES,
+    "event": {"title": "Večera za godišnjicu", "when": "15. jun 2030, 19:00", "place": "Bistro Obala · Ulica primera 5"},
+    "staff": {
+        "updated": "12. jun 2030",
+        "contact": "Selma (organizatorka) · +00 000 000 00 00",
+        "reminder": "Link samo za osoblje — molimo ne pokazujte ovu stranicu gostima.",
+    },
+    "requirements": {
+        "nuts": {"letter": "O", "label": "bez orašastih plodova", "avoids": ["nuts"]},
+        "gluten": {"letter": "G", "label": "bez glutena", "avoids": ["gluten"]},
+        "lactose": {"letter": "L", "label": "bez laktoze", "avoids": ["lactose"]},
+        "vegan": {"letter": "Ž", "label": "bez životinjskih namirnica"},
+        "alcohol": {"letter": "Č", "label": "čaša bez alkohola"},
+    },
+    "allergens": {
+        "nuts": {"label": "orašasti plodovi"},
+        "gluten": {"label": "gluten"},
+        "lactose": {"label": "laktoza"},
+    },
+    "couple": {
+        "label": "Ivan · Vesna",
+        "members": [
+            {"seat": 6, "name": "Vesna", "role": "domaćica"},
+            {"seat": 7, "name": "Ivan", "role": "domaćin", "requirements": ["gluten"]},
+        ],
+    },
+    "reservedSeats": [13],
+    "table": {**l_table_19(), "label": "Sto u obliku slova L"},
+    "dishes": {
+        "bruschetta": {
+            "name": "Brusketi s paradajzom",
+            "ingredients": "Kiselo testo, paradajz, bosiljak",
+            "staff": {"allergens": ["gluten"], "swaps": {"gluten": "poslužiti paradajz na kriškama krastavca"}},
+        },
+        "cheese-board": {
+            "name": "Daska sireva",
+            "ingredients": "Tri vrste sira, med, orasi",
+            "staff": {
+                "allergens": ["lactose", "nuts"],
+                "swaps": {
+                    "lactose": "umesto toga doneti voćni tanjir",
+                    "nuts": "poslužiti porciju bez oraha na posebnom tanjiru",
+                },
+            },
+        },
+        "hummus": {
+            "name": "Humus s povrćem",
+            "ingredients": "Leblebije, tahini, šargarepa, krastavac",
+            "staff": {"allergens": [], "tags": ["vegansko", "bez glutena"]},
+        },
+        "melon": {
+            "name": "Dinja s mentom",
+            "ingredients": "Dinja, menta, limeta",
+            "staff": {"allergens": [], "note": "Samo kada gost traži nešto drugo"},
+        },
+        "salmon": {
+            "name": "Marinirani losos",
+            "ingredients": "Losos, mirođija, kisela pavlaka",
+            "staff": {"allergens": ["lactose"], "swaps": {"lactose": "poslužiti prvo jelo bez kisele pavlake"}},
+        },
+        "cod": {
+            "name": "Pečeni bakalar u korici od badema",
+            "ingredients": "Bakalar, bademi, spanać",
+            "staff": {"allergens": ["nuts"], "swaps": {"nuts": "poslužiti drugo jelo bez korice"}},
+        },
+        "carpaccio": {
+            "name": "Goveđi karpačo",
+            "ingredients": "Govedina, rukola, krutoni",
+            "staff": {"allergens": ["gluten"], "swaps": {"gluten": "poslužiti prvo jelo bez krutona"}},
+        },
+        "duck": {
+            "name": "Pačetina s korenastim povrćem",
+            "ingredients": "Pačetina, šargarepa, paškanat, sos",
+            "staff": {"allergens": [], "swaps": {"vegan": "umesto toga poslužiti pečeno korenasto povrće sa sočivom"}},
+        },
+    },
+    "sets": {
+        "fish": {"title": "Meni A", "hint": "Riba", "eyebrow": "dva jela", "courses": ["salmon", "cod"],
+                 "pairing": "belo vino"},
+        "meat": {"title": "Meni B", "hint": "Meso", "eyebrow": "dva jela", "courses": ["carpaccio", "duck"],
+                 "pairing": "crno vino"},
+    },
+    "drinks": {
+        "categories": {
+            "sparkling": {"label": "Penušavo"},
+            "white": {"label": "Belo"},
+            "red": {"label": "Crno"},
+            "soft": {"label": "Bezalkoholno"},
+        },
+        "items": {
+            "fizz": {
+                "category": "sparkling",
+                "name": "Primer Brut, Podrumi Obala",
+                "details": "Dolina Primer · Šardone",
+                "servedWith": "uz predjela",
+                "staff": {"bottles": "6 boca", "serving": "dobro rashlađeno", "swaps": {"alcohol": "bezalkoholno penušavo"}},
+            },
+            "white": {
+                "category": "white",
+                "name": "Primer belo, Imanje Brdo",
+                "details": "Primorje Primer · Sovinjon blan",
+                "servedWith": "uz meni A",
+                "staff": {"bottles": "4 boce"},
+            },
+            "red": {
+                "category": "red",
+                "name": "Primer crno, Vinarija Stari mlin",
+                "details": "Brda Primer · Pino noar",
+                "servedWith": "uz meni B",
+                "staff": {"bottles": "4 boce", "serving": "otvoriti do 18:30"},
+            },
+            "water": {"category": "soft", "name": "Negazirana i gazirana voda"},
+            "juice": {
+                "category": "soft",
+                "name": "Limunada i sok od jabuke",
+                "staff": {"serving": "bokali na stolu od 19:00"},
+            },
+        },
+    },
+    "sections": [
+        {"id": "cover", "type": "cover"},
+        {
+            "id": "seats",
+            "widgets": [
+                {"type": "seating", "staff": {"footnote": "Mesto 13 ostaje slobodno celo veče: ostavite pribor na njemu."}}
+            ],
+        },
+        {
+            "id": "starters",
+            "title": "Predjela",
+            "eyebrow": "Za ceo sto",
+            "staff": {"eyebrow": "Za ceo sto · na stolu do 19:15"},
+            "widgets": [
+                {"type": "dishes", "items": ["bruschetta", "cheese-board", "hummus"]},
+                {"type": "dishes", "audience": "staff", "title": "Na zahtev", "items": ["melon"]},
+            ],
+        },
+        {
+            "id": "main",
+            "title": "Glavno jelo",
+            "eyebrow": "Izaberite jedan od dva menija",
+            "staff": {"eyebrow": "Dva menija · gosti biraju za stolom"},
+            "widgets": [
+                {
+                    "type": "sets",
+                    "items": ["fish", "meat"],
+                    "note": "Konobar će uzeti vašu porudžbinu posle predjela.",
+                    "staff": {"note": "Porudžbine uzmite kad predjela budu na stolu."},
+                },
+                {
+                    "type": "text",
+                    "id": "allergy-card",
+                    "audience": "guest",
+                    "variant": "card",
+                    "text": "Nešto ne jedete? Recite konobaru: kuhinja će prilagoditi jela.",
+                },
+            ],
+        },
+        {
+            "id": "drinks",
+            "title": "Pića",
+            "staff": {"eyebrow": "Šta služiti i kada"},
+            "widgets": [
+                {
+                    "type": "drinks",
+                    "audience": "guest",
+                    "groups": [
+                        {"title": "Bezalkoholna pića", "layout": "inline", "items": ["water", "juice"]},
+                        {"title": "Vina", "layout": "list", "items": ["fizz", "white", "red"]},
+                    ],
+                    "note": "Kokteli na zahtev",
+                },
+                {
+                    "type": "drinks",
+                    "id": "staff-list",
+                    "audience": "staff",
+                    "groups": [{"layout": "list", "items": ["fizz", "white", "red", "water", "juice"]}],
+                    "staff": {"note": "Bar priprema koktele na zahtev."},
+                },
+            ],
+        },
+        {
+            "id": "signature",
+            "title": "Uživajte u večeri!",
+            "audience": "guest",
+            "widgets": [{"type": "text", "variant": "signature", "text": SERBIAN_COUPLE_NAMES}],
+        },
+    ],
+}
+
+_SERBIAN_GUESTS = [
+    {"token": "galeb-5kd2", "name": "Jelena", "seats": [{"number": 19}, {"number": 1, "plusOne": True, "name": "Đorđe"}]},
+    {
+        "token": "vrabac-8mw3",
+        "name": "Ana i Miloš",
+        "seats": [{"number": 2, "name": "Ana"}, {"number": 3, "name": "Miloš", "requirements": ["vegan"]}],
+    },
+    {"token": "roda-7m2p", "name": "Bojan", "seats": [{"number": 4, "requirements": ["nuts"]}]},
+    {"token": "sova-9ad4", "name": "Gordana", "seats": [{"number": 5}]},
+    {"token": "caplja-4tx9", "name": "Olivera", "seats": [{"number": 8}, {"number": 9, "plusOne": True}]},
+    {"token": "senica-8np2", "name": "Željko", "seats": [{"number": 10, "requirements": ["gluten", "lactose"]}]},
+    {"token": "seva-3vk8", "name": "Aleksandra", "seats": [{"number": 11, "requirements": ["alcohol"]}]},
+    {
+        "token": "kos-4mz7",
+        "name": "Tihomir",
+        "seats": [{"number": 12}],
+        "sections": {"signature": {"note": "Hvala što ste došli čak sa obale!"}},
+    },
+    {"token": "zeba-6rb9", "name": "Marija", "seats": [{"number": 14, "requirements": ["lactose"]}]},
+    {"token": "lasta-3jw5", "name": "Nađa", "seats": [{"number": 15}, {"number": 16, "plusOne": True, "name": "Ognjen"}]},
+    {
+        "token": "detlic-2hx6",
+        "name": "Goran",
+        "seats": [{"number": 17}],
+        "sections": {"main": {"widgets": {"allergy-card": {"visible": False}}}},
+    },
+    {"token": "carlija-5tc3", "name": "Žana", "seats": [{"number": 18, "requirements": ["vegan"]}]},
+    {"token": "Vm7kQz2RtX9pLb4WnC6sYd", "staff": True},
+]
+
+
+def serbian() -> tuple[dict, list]:
+    """`reserved19` in Serbian Latin: 19 seats, seat 13 reserved."""
+    return copy.deepcopy(_SERBIAN_MENU), copy.deepcopy(_SERBIAN_GUESTS)
+
+
 #: Every set by name.
-SETS = {"mockup16": mockup16, "reserved19": reserved19, "plain": plain, "parts": parts}
+SETS = {"mockup16": mockup16, "reserved19": reserved19, "plain": plain, "parts": parts, "serbian": serbian}
+
+#: The names of the records for two: the seats have names of their own, and
+#: the staff page shows those.
+RECORDS_FOR_TWO = ("Peggy and Victor", "Ana i Miloš")
 
 
 def names(guests: list, menu: dict | None = None) -> set[str]:

@@ -26,7 +26,7 @@ platform or the Python version.  Standard library only, no input or output;
 the markup belongs to the template fragment.
 
 Public functions: `check_table`, `check_couple`, `expand_seats`,
-`badge_capacity`, `guest_scheme`, `staff_scheme`.
+`badge_capacity`, `label_box_width`, `guest_scheme`, `staff_scheme`.
 """
 
 import re
@@ -77,10 +77,15 @@ BADGE_RADIUS = 9
 BADGE_OFFSET = 12
 MAX_BADGES = 4
 
-#: Seat centre to the near edge of the "You" label: the edge of the ring.
+#: Seat centre to the near edge of the label of a guest's seat ("You"):
+#: the edge of the ring.
 LABEL_GAP = RING_RADIUS
-#: The box kept for a label (12 px bold: "You" is about 23 px wide).
-LABEL_WIDTH = 26
+#: The box kept for the label, from the word (`label_width`): 12 px bold
+#: type is about 7 px per character ("You" is about 23 px wide), and the box
+#: is never narrower than the one for "You".
+MIN_LABEL_WIDTH = 26
+LABEL_CHAR_WIDTH = 7
+LABEL_PADDING = 4
 LABEL_HEIGHT = 14
 #: How far a label keeps from the centre of another seat.
 SEAT_KEEP_OUT = SEAT_DIAMETER // 2 + 2
@@ -832,18 +837,25 @@ def _outline(arms: Sequence[_Arm]) -> str:
 # --------------------------------------------------------------------------
 
 
-def check_table(table: Any) -> TableCheck:
-    """Check a table description (parsed JSON of any type).
+def label_box_width(word: str) -> int:
+    """The width of the box kept for the label of a guest's seat, px:
+    "You" -> 26, "Vous" -> 32.  There is no text measuring at build time."""
+    return max(MIN_LABEL_WIDTH, LABEL_CHAR_WIDTH * len(word) + LABEL_PADDING)
+
+
+def check_table(table: Any, label_width: int = MIN_LABEL_WIDTH) -> TableCheck:
+    """Check a table description (parsed JSON of any type); `label_width`
+    is the width of the label of a guest's seat (`label_box_width`).
 
     The messages name positions in `table` and seat numbers, never ids,
     labels or other data values; they carry no file prefix.  `total` is the
     number of seats when the seat list could be read, else None.
     """
-    check, _plan = _check(table)
+    check, _plan = _check(table, label_width)
     return check
 
 
-def _check(table: Any) -> tuple[TableCheck, _Plan | None]:
+def _check(table: Any, label_width: int = MIN_LABEL_WIDTH) -> tuple[TableCheck, _Plan | None]:
     """The rules in waves: structure, alignment circles, arms, sides,
     aligned seats, seats, labels; a wave runs only when the ones before it
     found no error."""
@@ -869,13 +881,13 @@ def _check(table: Any) -> tuple[TableCheck, _Plan | None]:
         return TableCheck(errors, warnings, total), None
 
     plan = _Plan(parsed.label, parsed.field, arms, parsed.ids, seats, _outline(arms))
-    # Any seat can be a guest's only seat, so every seat needs room for
-    # "You".  With the constants above a seat's label always fits onto its
-    # own arm; the check guards the layout against changes to the
-    # constants.
+    # Any seat can be a guest's only seat, so every seat needs room for its
+    # label.  With the constants above "You" always fits onto the seat's own
+    # arm; the check guards the layout against changes to the constants and
+    # against a longer word.
     for seat in seats:
-        if _label_spot(seat, plan) is None:
-            errors.append(f"{_seat_where(seat)}: no room for the 'You' label")
+        if _label_spot(seat, plan, label_width) is None:
+            errors.append(f"{_seat_where(seat)}: no room for the label of the guest's seat")
     return TableCheck(errors, warnings, total), (None if errors else plan)
 
 
@@ -1000,8 +1012,8 @@ def _check_seats(seats: Sequence[_Seat], arms: Sequence[_Arm], field: _Field) ->
     return errors
 
 
-def _checked(table: Any) -> _Plan:
-    check, plan = _check(table)
+def _checked(table: Any, label_width: int = MIN_LABEL_WIDTH) -> _Plan:
+    check, plan = _check(table, label_width)
     if plan is None:
         raise TableError(check.errors)
     return plan
@@ -1019,8 +1031,8 @@ def check_couple(
     the label (None: no label) and the label's arm (None: the first seat's
     arm).  `check_table` checks the table itself: when it has errors, only
     what does not depend on it is checked here.  The couple is drawn on the
-    staff plan alone, where no seat has a "You" label, so the couple label
-    may lie anywhere on its arm.
+    staff plan alone, where no seat has the label of a guest's seat, so the
+    couple label may lie anywhere on its arm.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -1093,13 +1105,13 @@ def _overlap(a: _Box, b: _Box) -> bool:
     return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
 
 
-def _label_candidates(seat: _Seat) -> Iterator[_Spot]:
+def _label_candidates(seat: _Seat, label_width: int) -> Iterator[_Spot]:
     """(box, text x, text y, anchor) in half px: outwards from the table
     first, then right, left, up, down."""
     outward = _OUTWARD[seat.side]
     order = [outward] + [d for d in ((1, 0), (-1, 0), (0, -1), (0, 1)) if d != outward]
-    g, w, h = 2 * LABEL_GAP, 2 * LABEL_WIDTH, 2 * LABEL_HEIGHT
-    half_w, half_h = LABEL_WIDTH, LABEL_HEIGHT  # half of the box, in half px
+    g, w, h = 2 * LABEL_GAP, 2 * label_width, 2 * LABEL_HEIGHT
+    half_w, half_h = label_width, LABEL_HEIGHT  # half of the box, in half px
     x, y = seat.cx, seat.cy
     for dx, dy in order:
         if dx == 1:
@@ -1112,14 +1124,15 @@ def _label_candidates(seat: _Seat) -> Iterator[_Spot]:
             yield (x - half_w, y + g, x + half_w, y + g + h), x, y + g + half_h, "middle"
 
 
-def _label_spot(seat: _Seat, plan: _Plan) -> _Spot | None:
-    """The first spot of the "You" label inside the field that keeps off
-    the other seats; the arms are avoided when possible (first pass), else
-    the label may lie on an arm.  None when there is no room."""
+def _label_spot(seat: _Seat, plan: _Plan, label_width: int) -> _Spot | None:
+    """The first spot of the label of a guest's seat ("You") inside the
+    field that keeps off the other seats; the arms are avoided when possible
+    (first pass), else the label may lie on an arm.  None when there is no
+    room."""
     arm_boxes = [_arm_box(arm) for arm in plan.arms]
     width, height = plan.field
     for avoid_arms in (True, False):
-        for box, x, y, anchor in _label_candidates(seat):
+        for box, x, y, anchor in _label_candidates(seat, label_width):
             if box[0] < 0 or box[1] < 0 or box[2] > 2 * width or box[3] > 2 * height:
                 continue
             if avoid_arms and any(_overlap(box, other) for other in arm_boxes):
@@ -1165,39 +1178,42 @@ def badge_capacity(table: Any, number: int) -> int:
     return min(MAX_BADGES, len(_badge_spots(plan.seats[number - 1], plan.field)))
 
 
-def guest_scheme(table: Any, *, own_seats: Sequence[int], mine_text: str) -> dict:
+def guest_scheme(
+    table: Any, *, own_seats: Sequence[int], plan_text: str, label_width: int = MIN_LABEL_WIDTH
+) -> dict:
     """The `scheme` object of a guest page.
 
     `own_seats` are the guest record's seats, the guest's own first; each is
     drawn in a colour of its own, by its place in the record
-    (`SEAT_COLOURS`).  Only the seat of a single-seat record gets the "You"
-    label (`check_table` makes sure that it fits at any seat); the seats of
-    a larger record are told apart by colour alone.  Every other seat is
-    plain: a guest's plan has no couple, no couple label, no badges and no
-    dietary marks.  The caller words `mine_text` ("Olga — blue").
+    (`SEAT_COLOURS`).  Only the seat of a single-seat record gets the label
+    ("You", `label_width` wide; `check_table` with the same width makes sure
+    that it fits at any seat); the seats of a larger record are told apart
+    by colour alone.  Every other seat is plain: a guest's plan has no
+    couple, no couple label, no badges and no dietary marks.  The caller
+    words `plan_text`, the text of the drawing ("Table plan: ... Your seat:
+    Olga — blue").
 
     Raises TableError when the table does not pass `check_table` or the
     parameters contradict it, more seats than colours among them.
     """
-    plan = _checked(table)
+    plan = _checked(table, label_width)
     total = len(plan.seats)
     own = _seat_numbers(own_seats)
     if own is None or not own or len(set(own)) != len(own) or not all(1 <= n <= total for n in own):
         raise TableError(f"own_seats: expected different seat numbers from 1 to {total}")
     if len(own) > len(SEAT_COLOURS):
         raise TableError(f"own_seats: expected at most {len(SEAT_COLOURS)} seats, one per colour")
-    if not isinstance(mine_text, str):
-        raise TableError("mine_text: expected a string")
+    if not isinstance(plan_text, str):
+        raise TableError("plan_text: expected a string")
     seats = _seat_entries(plan, own=own, couple=set(), flagged=set())
     labels = []
-    single = len(own) == 1
-    if single:
-        spot = _label_spot(plan.seats[own[0] - 1], plan)
+    if len(own) == 1:
+        spot = _label_spot(plan.seats[own[0] - 1], plan, label_width)
         if spot is None:  # pragma: no cover - check_table leaves room at every seat
-            raise TableError(f"seat {own[0]}: no room for the 'You' label")
+            raise TableError(f"seat {own[0]}: no room for the label of the guest's seat")
         _box, x, y, anchor = spot
         labels.append({"x": _px(x), "y": _px(y), "anchor": anchor})
-    return _scheme(plan, None, seats, [], labels, hidden=False, mine=mine_text, single=single)
+    return _scheme(plan, None, seats, [], labels, hidden=False, plan_text=plan_text)
 
 
 def staff_scheme(
@@ -1213,7 +1229,7 @@ def staff_scheme(
     `letters` maps a seat number to the letters of its dietary notes in
     legend order; such a seat is marked and gets a badge per letter.  The
     couple's seats and the couple label are drawn; there are no guest seats,
-    no seat colours and no "You" label.
+    no seat colours and no label of a guest's seat.
     """
     plan = _checked(table)
     total = len(plan.seats)
@@ -1239,7 +1255,7 @@ def staff_scheme(
             raise TableError(f"seat {number}: no room for {len(items)} badges")
         for letter, (x, y) in zip(items, sorted(spots[: len(items)], key=lambda p: (p[1], p[0]))):
             badges.append({"letter": letter, "cx": _px(x), "cy": _px(y), "r": BADGE_R})
-    return _scheme(plan, caption, seats, badges, [], hidden=True, mine="", single=False)
+    return _scheme(plan, caption, seats, badges, [], hidden=True, plan_text="")
 
 
 def _couple_input(
@@ -1297,8 +1313,7 @@ def _scheme(
     labels: list,
     *,
     hidden: bool,
-    mine: str,
-    single: bool,
+    plan_text: str,
 ) -> dict:
     couple = None
     if caption is not None:
@@ -1312,10 +1327,7 @@ def _scheme(
         "width": str(plan.field.width),
         "height": str(plan.field.height),
         "hidden": hidden,
-        "tableLabel": plan.label,
-        "total": str(len(plan.seats)),
-        "mine": mine,
-        "single": single,
+        "planText": plan_text,
         "outline": plan.outline,
         "couple": couple,
         "seats": seats,

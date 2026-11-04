@@ -88,8 +88,9 @@ def tree_digest(root: Path) -> dict[str, str]:
 
 
 def occurs(word: str, text: str) -> bool:
-    """`word` as a whole word of `text` (not inside a longer word)."""
-    return re.search(rf"(?<![A-Za-z0-9]){re.escape(word)}(?![A-Za-z0-9])", text) is not None
+    """`word` as a whole word of `text` (not inside a longer word, in any
+    script: "Ana" does not occur in "Anađelka")."""
+    return re.search(rf"(?<!\w){re.escape(word)}(?!\w)", text) is not None
 
 
 class TempDirTestCase(unittest.TestCase):

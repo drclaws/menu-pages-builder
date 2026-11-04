@@ -13,7 +13,10 @@ cannot drift from the contract.
 
 The data is fictional and follows the page design: Ivan & Vera's dinner at
 a bistro, an L-shaped table of sixteen seats.  Only one tree has the
-navigation bar (`nav`): the others render as pages without it.
+navigation bar (`nav`): the others render as pages without it.  The words
+are the English defaults: the fixed texts in the root (`strings`) and the
+texts the build words with them (`planText`, `hostLine`, `pairingText`,
+`updatedText`, `contactText`).
 The trees:
 
 * `guest_plus_one` - Olga with her +1 at seats 8 and 9, in two colours on the
@@ -54,11 +57,13 @@ WIDGET_COMMON_FIELDS = ("type", "domId", "labelledBy")
 
 #: The fields of every node kind; a widget's kind is `widget:<type>`.
 NODES = {
-    "root": ("isStaff", "coupleNames", "event", "assetsPath", "faviconPath", "themeColor",
-             "staff", "counters", "nav", "sections"),
+    "root": ("lang", "strings", "isStaff", "coupleNames", "event", "assetsPath", "faviconPath",
+             "themeColor", "staff", "counters", "nav", "sections"),
+    "strings": ("pageTitle", "staffVersion", "sections", "you", "seatNumber", "guestAndNotes",
+                "nameBlank", "noRestrictions"),
     "navItem": ("label", "target"),
     "event": ("title", "when", "place"),
-    "staff": ("updated", "contact", "reminder"),
+    "staff": ("updated", "contact", "reminder", "updatedText", "contactText"),
     "counters": ("guests", "notes", "guestsText", "notesText", "tableLabel"),
     "section": ("id", "type", "domId", "titleId", "title", "eyebrow", "note", "widgets"),
     "widget:text": WIDGET_COMMON_FIELDS + ("text", "variant"),
@@ -69,14 +74,15 @@ NODES = {
     "widget:heading": WIDGET_COMMON_FIELDS + ("titleId", "title", "eyebrow"),
     "seatName": ("name", "colour"),
     "legend": ("letter", "label"),
-    "row": ("number", "name", "isPlusOne", "hostName", "roleLabel", "isCouple", "isFree",
+    "row": ("number", "name", "isPlusOne", "hostLine", "roleLabel", "isCouple", "isFree",
             "tags"),
     "dish": ("name", "ingredients", "allergens", "tags", "noRestrictions", "swapLines", "note"),
-    "set": ("id", "domId", "title", "hint", "eyebrow", "courses", "pairing", "swapLines", "nested"),
+    "set": ("id", "domId", "title", "hint", "eyebrow", "courses", "pairing", "pairingText",
+            "swapLines", "nested"),
     "group": ("title", "layout", "joined", "items"),
     "drink": ("category", "name", "line"),
-    "scheme": ("width", "height", "hidden", "tableLabel", "total", "mine", "single", "outline",
-               "couple", "seats", "badges", "labels"),
+    "scheme": ("width", "height", "hidden", "planText", "outline", "couple", "seats", "badges",
+               "labels"),
     "schemeCouple": ("text", "x", "y", "vertical"),
     "schemeSeat": ("number", "cx", "cy", "r", "kind", "mark", "colour", "ring", "ringR"),
     "schemeBadge": ("letter", "cx", "cy", "r"),
@@ -86,6 +92,7 @@ NODES = {
 #: (kind, field) -> the kind of the node below the field, or of every node in
 #: the list there.  `widget` stands for each node's `widget:<type>`.
 CHILDREN = {
+    ("root", "strings"): "strings",
     ("root", "event"): "event",
     ("root", "staff"): "staff",
     ("root", "counters"): "counters",
@@ -155,6 +162,11 @@ COUPLE = "Ivan & Vera"
 EVENT = {"title": "Anniversary dinner", "when": "15 June 2030, 19:00",
          "place": "Riverside Bistro · Example Street 5"}
 ASSETS = "/assets"
+#: The fixed texts of the pages, in English.
+STRINGS = {"pageTitle": "Dinner menu", "staffVersion": "Staff version · not for guests",
+           "sections": "Sections", "you": "You", "seatNumber": "No.",
+           "guestAndNotes": "Guest · dietary notes", "nameBlank": "[name]",
+           "noRestrictions": "no restrictions"}
 
 
 def root(*, staff_page: bool, sections: list, staff: dict | None = None,
@@ -162,9 +174,11 @@ def root(*, staff_page: bool, sections: list, staff: dict | None = None,
     """The root of a page; a guest page leaves the staff fields empty.  `nav`
     is (label, section id) for every link in the navigation bar."""
     return node(
-        "root", isStaff=staff_page, coupleNames=COUPLE, event=node("event", **EVENT),
+        "root", lang="en", strings=node("strings", **STRINGS), isStaff=staff_page,
+        coupleNames=COUPLE, event=node("event", **EVENT),
         assetsPath=ASSETS, faviconPath=f"{ASSETS}/favicon.svg", themeColor="#f1f2f4",
-        staff=staff or node("staff", updated="", contact="", reminder=""),
+        staff=staff or node("staff", updated="", contact="", reminder="", updatedText="",
+                            contactText=""),
         counters=counters or node("counters", guests=0, notes=0, guestsText="", notesText="",
                                   tableLabel=""),
         nav=[node("navItem", label=label, target=f"s-{section_id}") for label, section_id in nav],
@@ -226,8 +240,8 @@ def seating(section_id: str, *, scheme: dict | None = None, names: tuple = (),
 def row(number: int, name: str = "", *, plus_one_of: str = "", role: str = "",
         couple: bool = False, free: bool = False, tags: tuple = ()) -> dict:
     return node("row", number=number, name=name, isPlusOne=bool(plus_one_of),
-                hostName=plus_one_of, roleLabel=role, isCouple=couple, isFree=free,
-                tags=list(tags))
+                hostLine=f"{plus_one_of}’s guest" if plus_one_of else "", roleLabel=role,
+                isCouple=couple, isFree=free, tags=list(tags))
 
 
 def sets(widget_dom_id: str, entries: tuple, staff_page: bool, nested: bool = False) -> list[dict]:
@@ -236,6 +250,7 @@ def sets(widget_dom_id: str, entries: tuple, staff_page: bool, nested: bool = Fa
     return [
         node("set", id=set_id, domId=f"{widget_dom_id}--set-{set_id}", title=title, hint=hint,
              eyebrow=eyebrow, courses=dishes(courses, staff_page), pairing=pairing,
+             pairingText=f"Paired with {pairing}" if pairing else "",
              swapLines=list(swaps) if staff_page else [], nested=nested)
         for set_id, title, hint, eyebrow, courses, pairing, swaps in entries
     ]
@@ -366,10 +381,14 @@ def scheme(*, staff_page: bool, own: tuple = (), mine: str = "", flagged: tuple 
     """The L-shaped table plan for a page, every number a string.
 
     `own` are the guest's seats in record order (each takes the colour of
-    its place), `flagged` the seats with a dietary note; `badges` are
+    its place), `mine` whose seat is marked in which colour (the end of the
+    plan's text), `flagged` the seats with a dietary note; `badges` are
     (letter, cx, cy), `label` the (x, y, anchor) of "You".  The staff plan
     has the couple, a guest's plan does not.
     """
+    yours = "Your seat" if len(own) == 1 else "Your seats"
+    plan_text = "" if staff_page else (
+        f"Table plan: {TABLE_LABEL}, {len(SEAT_CENTRES)} seats. {yours}: {mine}")
     colours = dict(zip(own, ENUMS["colour"]))
     seats = []
     for number, (cx, cy) in enumerate(SEAT_CENTRES, start=1):
@@ -381,8 +400,8 @@ def scheme(*, staff_page: bool, own: tuple = (), mine: str = "", flagged: tuple 
                           kind=kind, mark=mark, colour=colours.get(number, ""),
                           ring=kind == "you", ringR="21"))
     return node(
-        "scheme", width="318", height="310", hidden=staff_page, tableLabel=TABLE_LABEL,
-        total=str(len(SEAT_CENTRES)), mine=mine, single=len(own) == 1, outline=TABLE_OUTLINE,
+        "scheme", width="318", height="310", hidden=staff_page, planText=plan_text,
+        outline=TABLE_OUTLINE,
         couple=node("schemeCouple", text=COUPLE_LABEL, x="114", y="86", vertical=False)
         if staff_page else None,
         seats=seats,
@@ -526,7 +545,9 @@ def staff() -> dict:
         staff_page=True,
         staff=node("staff", updated="10 June 2030", contact="Selma (planner) · +00 000 000 00 00",
                    reminder="Staff link only — please do not show this page to guests.\n\n"
-                            "Print it on the morning of the dinner."),
+                            "Print it on the morning of the dinner.",
+                   updatedText="updated 10 June 2030",
+                   contactText="Contact on the night: Selma (planner) · +00 000 000 00 00"),
         counters=node("counters", guests=14, notes=5, guestsText="14 guests",
                       notesText="5 dietary notes", tableLabel=TABLE_LABEL),
         sections=[

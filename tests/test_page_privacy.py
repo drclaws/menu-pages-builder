@@ -363,7 +363,7 @@ class StringsTest(unittest.TestCase):
                         if widget["type"] == "seating":
                             labels.append(" ".join(entry["name"] for entry in widget.pop("names")))
                             if widget["scheme"] is not None:
-                                labels.append(widget["scheme"].pop("mine"))
+                                labels.append(widget["scheme"].pop("planText"))
                 for person in named:
                     checked += 1
                     with self.subTest(fixture=name, record=page.number, person=person):
@@ -394,7 +394,7 @@ class StringsTest(unittest.TestCase):
                         if override.get("note"):
                             self.assertNotIn(override["note"], text)
                 for person in fixtures.names(guests, menu):
-                    if person not in ("Peggy and Victor",):  # a record for two: its seats are named
+                    if person not in fixtures.RECORDS_FOR_TWO:  # its seats are named
                         self.assertIn(person, text)
 
 
@@ -405,7 +405,8 @@ class StructureTest(unittest.TestCase):
                 with self.subTest(fixture=name, record=page.number):
                     tree = page.tree
                     self.assertFalse(tree["isStaff"])
-                    self.assertEqual(tree["staff"], {"updated": "", "contact": "", "reminder": ""})
+                    self.assertEqual(tree["staff"], {"updated": "", "contact": "", "reminder": "", "updatedText": "",
+                                                     "contactText": ""})
                     self.assertEqual(
                         tree["counters"], {"guests": 0, "notes": 0, "guestsText": "", "notesText": "", "tableLabel": ""}
                     )

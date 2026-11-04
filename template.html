@@ -1,6 +1,6 @@
 <!doctype html><!-- if:isStaff -->
-<html lang="en" class="menu menu--staff"><!-- endif --><!-- if:!isStaff -->
-<html lang="en" class="menu menu--guest"><!-- endif -->
+<html lang="{{lang}}" class="menu menu--staff"><!-- endif --><!-- if:!isStaff -->
+<html lang="{{lang}}" class="menu menu--guest"><!-- endif -->
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -9,7 +9,7 @@
   <meta name="text-scale" content="scale">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex, nofollow">
-  <title>Dinner menu · {{coupleNames}}</title>
+  <title>{{strings.pageTitle}} · {{coupleNames}}</title>
   <link rel="icon" href="{{faviconPath}}" type="image/svg+xml">
   <link rel="stylesheet" href="{{assetsPath}}/app.css">
   <script src="{{assetsPath}}/app.js" defer></script>
@@ -32,11 +32,16 @@
      no link preview tags (a menu link is not meant for sharing) and ask search
      engines to keep away. Every address is a path from the site root: the
      styles, the script and the icon live in assetsPath.
+     The words come from the page root: lang is the language tag of the page,
+     strings holds the fixed texts (pageTitle, staffVersion), and the staff texts
+     with their words are worded by the build (staff.updatedText,
+     staff.contactText); staff.updated and staff.contact only decide whether a
+     text is shown. The markup holds no word of its own.
      Each condition sits on the line of markup it controls, so a missing value
      leaves no empty line behind. -->
 <!-- if:isStaff -->
 <header class="staff-bar">
-  <p class="container staff-bar__inner"><strong class="staff-bar__title">Staff version · not for guests</strong><!-- if:staff.updated --> <span class="staff-bar__updated">updated {{staff.updated}}</span><!-- endif --></p>
+  <p class="container staff-bar__inner"><strong class="staff-bar__title">{{strings.staffVersion}}</strong><!-- if:staff.updated --> <span class="staff-bar__updated">{{staff.updatedText}}</span><!-- endif --></p>
 </header>
 <!-- endif --><!-- if:nav --><!-- include:partials/section-nav --><!-- endif -->
 <main class="page">
@@ -46,7 +51,7 @@
 <footer class="page-footer">
   <div class="container">
     <div class="card staff-footer">
-      <p class="staff-footer__contact">Contact on the night: {{staff.contact}}</p><!-- if:staff.reminder -->
+      <p class="staff-footer__contact">{{staff.contactText}}</p><!-- if:staff.reminder -->
       <p>{{staff.reminder}}</p><!-- endif -->
     </div>
   </div>

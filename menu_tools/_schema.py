@@ -28,7 +28,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
-from menu_tools import _table
+from menu_tools import _table, _words
 from menu_tools._core import (
     ID_RULE,
     SCHEMA_MISSING as MISSING,
@@ -50,6 +50,8 @@ AUDIENCES = ("all", "guest", "staff")
 
 MENU_FIELDS = (
     "schemaVersion",
+    "lang",
+    "strings",
     "coupleNames",
     "event",
     "staff",
@@ -132,7 +134,13 @@ STAFF_TOKEN_MIN = 16
 #: The token placeholder: no menu text may hold it, since menu pages hold no
 #: token.
 TOKEN_PLACEHOLDER = "{token}"
-_LETTER_RE = re.compile(r"[A-Z]")
+
+#: A language tag (BCP 47): the language, then an optional script, region
+#: and variants ("en", "en-GB", "sr-Latn", "de-CH-1996").
+_LANG_RE = re.compile(
+    r"[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*"
+)
+_LANG_PROBLEM = "must be a language tag such as 'en', 'de' or 'sr-Latn'"
 
 _STAFF_ONLY_HINT = "is not allowed in the staff record: it has a token and nothing else"
 #: A guest cannot switch on a staff-only part, so a hidden one is never
@@ -375,10 +383,11 @@ def check_menu(menu: Any, report: Any, where: str = MENU_FILE) -> MenuIndex:
         _line(check, staff, "updated", ("staff",))
         _line(check, staff, "contact", ("staff",))
         _text(check, staff, "reminder", ("staff",))
+    you = _check_language(check, menu)
 
     index.allergens = _check_allergens(check, menu)
     index.requirements = _check_requirements(check, menu, index)
-    _check_table(check, menu, index)
+    _check_table(check, menu, index, _table.label_box_width(you))
     _check_reserved(check, menu, index)
     _check_couple(check, menu, index)
     index.dishes = _check_dishes(check, menu, index)
@@ -404,6 +413,110 @@ def _check_version(check: _Checker, menu: dict) -> bool:
     return True
 
 
+def _check_language(check: _Checker, menu: dict) -> str:
+    """`lang` and `strings`; returns the word of the label of a guest's seat
+    on the table plan (the table check needs room for it)."""
+    tag = menu.get("lang", _words.DEFAULT_LANG)
+    if not isinstance(tag, str) or not _LANG_RE.fullmatch(tag):
+        check.error(("lang",), _LANG_PROBLEM)
+        tag = None
+    rule = language = None
+    if tag is not None:
+        language = _words.language(tag)
+        rule = _words.plural_rule(tag)
+        if rule is None:
+            check.warning((), f"no plural rules for '{language}': the forms one and other are used")
+            rule = _words.ONE_OTHER
+    strings = check.value(menu, "strings", "object", ())
+    you = _words.ENGLISH["you"]
+    if strings is not MISSING:
+        check.unknown_fields(strings, tuple(_words.ENGLISH), ("strings",))
+        for key in _words.ENGLISH:
+            if key in strings:
+                usable = _check_word(check, strings, key, rule, language)
+                if key == "you" and usable:
+                    you = strings[key]
+    # a menu in another language gives every word: a page in two languages
+    # is a defect (a broken tag or a broken `strings` is reported above)
+    every_word = language not in (None, _words.ENGLISH_LANGUAGE)
+    if every_word and (strings is not MISSING or "strings" not in menu):
+        given = {} if strings is MISSING else strings
+        missing = sorted(key for key in _words.ENGLISH if key not in given)
+        if missing:
+            check.error(
+                ("strings",),
+                f"must give every key for '{tag}' (the built-in words are English); missing: {', '.join(missing)}",
+            )
+    return you
+
+
+def _check_word(
+    check: _Checker, strings: dict, key: str, rule: _words.PluralRule | None, language: str | None
+) -> bool:
+    """One word of `strings` by its kind; False when it has a problem.
+    `rule` is the plural rule of the menu's language and `language` its
+    primary subtag (both None when the language tag is broken)."""
+    parts = ("strings",)
+    where = (*parts, key)
+    errors = check.errors
+    if key in _words.PLURALS:
+        _check_forms(check, strings, key, rule, language)
+    elif key == _words.COLOUR_NAMES:
+        names = strings[key]
+        count = len(_table.SEAT_COLOURS)
+        if not isinstance(names, list) or len(names) != count or not all(isinstance(name, str) for name in names):
+            check.error(where, f"must be a list of {count} strings")
+        else:
+            for position, name in enumerate(names):
+                if not name.strip() or "\n" in name or "\r" in name:
+                    check.error((*where, position), "must be a non-empty single-line string")
+                else:
+                    _braces(check, name, (*where, position))
+    else:
+        value = _line(check, strings, key, parts, required=True)
+        if value is not MISSING and key in _words.PATTERNS:
+            _check_placeholders(check, value, where, _words.PATTERNS[key])
+    return check.errors == errors
+
+
+def _check_forms(
+    check: _Checker, strings: dict, key: str, rule: _words.PluralRule | None, language: str | None
+) -> None:
+    """A plural word: a form for every category the language uses, each with
+    the placeholder {n}; "other" is always accepted."""
+    where = ("strings", key)
+    forms = check.value(strings, key, "object", ("strings",), required=True)
+    if forms is MISSING:
+        return
+    used = rule.forms if rule is not None else _words.CATEGORIES
+    for category in forms:
+        if category not in used and category != "other":
+            if rule is not None:
+                check.error((*where, category), f"is not a form '{language}' uses ({', '.join(used)})")
+            else:
+                check.error((*where, category), f"is not a plural form: one of {', '.join(used)}")
+            continue
+        value = _line(check, forms, category, where, required=True)
+        if value is not MISSING:
+            _check_placeholders(check, value, (*where, category), (_words.COUNT_PLACEHOLDER,))
+    if rule is not None:
+        for category in rule.forms:
+            if category not in forms:
+                check.error((*where, category), f"is required: '{language}' uses the forms {', '.join(rule.forms)}")
+
+
+def _check_placeholders(check: _Checker, value: str, where: Sequence, known: Sequence[str]) -> None:
+    """A pattern holds every placeholder of its word and no other one."""
+    found = _words.placeholders(value)
+    listed = ", ".join(f"{{{name}}}" for name in known)
+    for name in dict.fromkeys(found):
+        if name not in known:
+            check.error(where, f"has an unknown placeholder {{{name}}}; known: {listed}")
+    for name in known:
+        if name not in found:
+            check.error(where, f"must contain the placeholder {{{name}}}")
+
+
 def _check_allergens(check: _Checker, menu: dict) -> dict | None:
     allergens = _registry(check, menu, "allergens")
     for allergen_id, item in (allergens or {}).items():
@@ -426,8 +539,8 @@ def _check_requirements(check: _Checker, menu: dict, index: MenuIndex) -> dict |
         check.unknown_fields(item, REQUIREMENT_FIELDS, parts)
         letter = check.value(item, "letter", "string", parts, required=True)
         if letter is not MISSING:
-            if not _LETTER_RE.fullmatch(letter):
-                check.error((*parts, "letter"), "must be one capital latin letter, A-Z")
+            if not (len(letter) == 1 and letter.isupper()):
+                check.error((*parts, "letter"), "must be one capital letter")
             elif letter in letters:
                 check.error((*parts, "letter"), f"repeats the letter of {show_id(letters[letter])}")
             else:
@@ -438,11 +551,13 @@ def _check_requirements(check: _Checker, menu: dict, index: MenuIndex) -> dict |
     return requirements
 
 
-def _check_table(check: _Checker, menu: dict, index: MenuIndex) -> None:
+def _check_table(check: _Checker, menu: dict, index: MenuIndex, label_width: int) -> None:
+    """The table, with room at every seat for the label of a guest's seat
+    `label_width` px wide."""
     if "table" not in menu:
         return
     index.has_table = True
-    result = _table.check_table(menu["table"])
+    result = _table.check_table(menu["table"], label_width=label_width)
     for message in result.errors:
         check.raw_error(message)
     for message in result.warnings:
@@ -682,7 +797,7 @@ def _check_sections(check: _Checker, menu: dict, index: MenuIndex) -> None:
     seating = 0
     covers: list[int] = []
     positions: dict[str, int] = {}
-    labels: dict[str, int] = {}  # a navigation label in lower case -> its section
+    labels: dict[str, int] = {}  # a navigation label, letter case folded -> its section
     for position, section in enumerate(sections):
         parts = ("sections", position)
         section = check.object(section, parts)
@@ -717,7 +832,8 @@ def _check_sections(check: _Checker, menu: dict, index: MenuIndex) -> None:
         widgets = [] if widgets is MISSING else widgets
         has_seating = any(isinstance(widget, dict) and widget.get("type") == "seating" for widget in widgets)
         # default: a section with the seating widget may leave its title to the
-        # page ("Your seat" for a guest, "Seating and dietary notes" for the staff)
+        # page (the words yourSeat or yourSeats for a guest, staffSeating for
+        # the staff: "Your seat", "Seating and dietary notes")
         _line(check, section, "title", parts, required=not has_seating)
         _line(check, section, "eyebrow", parts)
         label = _line(check, section, "nav", parts)
@@ -725,7 +841,7 @@ def _check_sections(check: _Checker, menu: dict, index: MenuIndex) -> None:
             # an empty text is "not set" elsewhere; a label is given or left out
             check.error((*parts, "nav"), f"must not be empty: {_NO_LABEL}")
         elif label is not MISSING:
-            key = " ".join(label.split()).lower()
+            key = " ".join(label.split()).casefold()
             if key in labels:
                 check.warning(
                     (*parts, "nav"),

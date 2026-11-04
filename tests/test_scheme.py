@@ -11,8 +11,8 @@ partial.  The output goes through the finished HTML page and SVG file checks
 (`check_html`, `check_svg`).
 
 The names in the drawing (the couple label on the staff plan, the names of
-the guest's seats in the guest plan's text) come from the data set and word
-constants, never from literals here.
+the guest's seats in the guest plan's text) come from the data set and the
+English words of `menu_tools._words`, never from literals here.
 
 The radii the geometry writes depend on the border widths the style sheet
 draws: the last tests tie those `menu_tools._table` constants to the
@@ -163,8 +163,10 @@ CLASSES = frozenset({
 NUMBER = r"-?\d+(?:\.(?:5|25|75))?"
 NUMBER_ATTRIBUTES = ("width", "height", "cx", "cy", "r", "x", "y")
 
+#: The English words of the pages.
+EN = _words.ENGLISH_WORDS
 #: Who sits at the guest record's seats, in order.
-NAMES = ("Olga", _words.YOUR_GUEST, "Hugo")
+NAMES = ("Olga", EN["yourGuest"], "Hugo")
 
 #: sha256 of the 16-seat L-shaped table's markup: for a guest with two seats,
 #: a guest with one seat and the staff; changing the partial changes it.
@@ -180,8 +182,9 @@ def guest_object(shape: str, own: list | None = None, table: dict | None = None)
     """The guest's object; the seats of `own` are named after `NAMES`."""
     make, _couple, seats, _letters = SHAPES[shape]
     own = seats if own is None else own
-    return _table.guest_scheme(table or make(), own_seats=own,
-                               mine_text=_words.colour_key(NAMES[:len(own)]))
+    table = table or make()
+    text = _words.plan_text(EN, table["label"], len(_table.expand_seats(table)), NAMES[:len(own)])
+    return _table.guest_scheme(table, own_seats=own, plan_text=text)
 
 
 def staff_object(shape: str, table: dict | None = None) -> dict:
@@ -194,7 +197,7 @@ _TEMPLATE = core.parse_template(FRAME, "frame", core.load_fragments(FRAGMENTS_DI
 
 def render(scheme: dict, staff_page: bool) -> str:
     """The partial for the audience's page, as the build publishes it."""
-    output = _TEMPLATE.render({"isStaff": staff_page, "scheme": scheme})
+    output = _TEMPLATE.render({"isStaff": staff_page, "strings": EN.markup(), "scheme": scheme})
     return core.strip_html_comments(output, "frame")
 
 
@@ -258,7 +261,7 @@ class MarkupTest(unittest.TestCase):
 
     def test_a_field_of_another_size_sizes_the_drawing(self):
         table = wide_l_table()
-        for audience, scheme in (("guest", _table.guest_scheme(table, own_seats=[8], mine_text="x")),
+        for audience, scheme in (("guest", _table.guest_scheme(table, own_seats=[8], plan_text="x")),
                                  ("staff", _table.staff_scheme(table, couple_seats=[], couple_label=None,
                                                                couple_arm=None, letters={15: ["A"]}))):
             with self.subTest(audience=audience):
@@ -494,7 +497,7 @@ class SafetyTest(unittest.TestCase):
         value = '<b>"x"&{{y}}'
         table = fixtures.l_table_16()
         table["label"] = value
-        scheme = _table.guest_scheme(table, own_seats=[8], mine_text=_words.colour_key([value]))
+        scheme = _table.guest_scheme(table, own_seats=[8], plan_text=_words.plan_text(EN, value, 16, [value]))
         svg = render(scheme, False)
         self.assertIn('aria-label="Table plan: &lt;b&gt;&quot;x&quot;&amp;&#123;&#123;y&#125;'
                       '&#125;, 16 seats. Your seat: &lt;b&gt;&quot;x&quot;&amp;&#123;&#123;y&#125;'
@@ -518,8 +521,8 @@ class SafetyTest(unittest.TestCase):
             self.assertNotIn(part, svg)
         self.assertEqual(svg_tag(svg)["role"], "img")
         # the staff page never prints labels or colours nor names the guest's seats
-        staff.update(labels=copy.deepcopy(guest_object("l16", [8])["labels"]), mine="Olga — blue",
-                     single=False, hidden=False)
+        staff.update(labels=copy.deepcopy(guest_object("l16", [8])["labels"]),
+                     planText="Table plan: L-shaped table, 16 seats. Your seat: Olga — blue", hidden=False)
         for seat in staff["seats"]:
             seat["colour"] = "1"
         svg = render(staff, True)
@@ -661,8 +664,8 @@ class SeatColoursTest(unittest.TestCase):
     def test_a_token_and_a_name_per_colour_the_first_one_the_accent(self):
         names = sorted(name for name in self.tokens if name.startswith("--color-seat-"))
         self.assertEqual(names, [f"--color-seat-{colour}" for colour in _table.SEAT_COLOURS])
-        self.assertEqual(len(_words.SEAT_COLOUR_NAMES), len(_table.SEAT_COLOURS))
-        self.assertEqual(len(set(_words.SEAT_COLOUR_NAMES)), len(_words.SEAT_COLOUR_NAMES))
+        self.assertEqual(len(EN["seatColours"]), len(_table.SEAT_COLOURS))
+        self.assertEqual(len(set(EN["seatColours"])), len(EN["seatColours"]))
         self.assertEqual(self.tokens["--color-seat-1"], "var(--color-accent)")
         self.assertEqual(len(set(self.palette)), len(self.palette))
         self.assertGreaterEqual(len(self.palette), 3)

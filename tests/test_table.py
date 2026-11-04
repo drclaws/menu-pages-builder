@@ -181,11 +181,11 @@ OUTLINES = {
 }
 
 #: sha256 of the guest and staff objects of all FIXTURES (JSON, sorted keys).
-DIGEST = "eab71cb02ba8ec3f31e52446e5a4ef488f75e7a6b752396ff44e43e8b539491c"
+DIGEST = "652ff1dba39af350a133414cdd20c83143b0815e26691b79bc60ae9c1db13a6a"
 
 
-def guest(table, own, *, mine="mine") -> dict:
-    return guest_scheme(table, own_seats=list(own), mine_text=mine)
+def guest(table, own, *, text="text", **width) -> dict:
+    return guest_scheme(table, own_seats=list(own), plan_text=text, **width)
 
 
 def staff(table, letters, *, pair=None) -> dict:
@@ -196,7 +196,7 @@ def fixture_objects(name: str) -> tuple[dict, dict]:
     make, pair, own, letters = FIXTURES[name]
     mine = ", ".join(f"guest {position}" for position, _number in enumerate(own, 1))
     return (
-        guest(make(), own, mine=mine),
+        guest(make(), own, text=mine),
         staff(make(), letters, pair=pair),
     )
 
@@ -640,7 +640,6 @@ class LabelTest(unittest.TestCase):
     def test_you_next_to_seat_8_as_in_the_mockup(self):
         scheme = guest(l_table_shifted(), [8])
         self.assertEqual(scheme["labels"], [{"x": "283", "y": "142", "anchor": "start"}])
-        self.assertTrue(scheme["single"])
 
     def test_labels_fall_back_at_the_edge_of_the_field(self):
         # seat 1: outwards (left) is out of the field, right lies on the arm
@@ -667,8 +666,23 @@ class LabelTest(unittest.TestCase):
             with self.subTest(own=own):
                 scheme = guest(l_table(), own)
                 self.assertEqual(scheme["labels"], [])
-                self.assertFalse(scheme["single"])
                 self.assertEqual([s["kind"] for s in scheme["seats"]].count("you"), len(own))
+
+    def test_the_box_of_the_label_follows_the_word(self):
+        # 7 px a character and 4 px more, never narrower than the box of "You"
+        self.assertEqual(_table.label_box_width("You"), _table.MIN_LABEL_WIDTH)
+        self.assertEqual((_table.label_box_width("Vi"), _table.label_box_width("Vous")), (26, 32))
+        self.assertEqual(_table.label_box_width("Ovde sedite vi"), 102)
+        # the box of "You" fits at every seat; a long word does not
+        long = _table.label_box_width("Ovde sedite vi")
+        self.assertEqual(check_table(l_table(), label_width=_table.label_box_width("You")).errors, [])
+        errors = check_table(l_table(), label_width=long).errors
+        self.assertTrue(errors)
+        self.assertEqual({message.split(": ", 1)[1] for message in errors}, {"no room for the label of the guest's seat"})
+        # a plan that has no room for the label is never laid out
+        with self.assertRaises(TableError):
+            guest(l_table(), [8], label_width=long)
+        self.assertEqual(len(guest(l_table(), [8], label_width=_table.MIN_LABEL_WIDTH)["labels"]), 1)
 
     def test_a_label_at_the_edge_of_the_field_lies_on_a_narrow_arm(self):
         # seat 5 at the left edge: outwards is out of the field, up and down
@@ -1054,8 +1068,8 @@ WARNING_RULES = {9}
 #: with a wider keep-out around the other seats.
 PATCHED_RULE_CASES = [
     (14, l_table, {"SEAT_KEEP_OUT": 40}, [
-        "table.seats[1] (seat 3): no room for the 'You' label",
-        "table.seats[5] (seat 14): no room for the 'You' label",
+        "table.seats[1] (seat 3): no room for the label of the guest's seat",
+        "table.seats[5] (seat 14): no room for the label of the guest's seat",
     ]),
 ]
 
@@ -1206,11 +1220,10 @@ class SchemeTest(unittest.TestCase):
     def test_guest_object(self):
         table = l_table()
         table["label"] = 'L-shaped <table> & "co"'
-        scheme = guest(table, [8, 9], mine="the text of the caller")
+        scheme = guest(table, [8, 9], text="the text of the caller")
         self.assertEqual(
-            {key: scheme[key] for key in ("width", "height", "hidden", "tableLabel", "total", "mine", "single")},
-            {"width": "318", "height": "310", "hidden": False, "tableLabel": 'L-shaped <table> & "co"',
-             "total": "16", "mine": "the text of the caller", "single": False},
+            {key: scheme[key] for key in ("width", "height", "hidden", "planText")},
+            {"width": "318", "height": "310", "hidden": False, "planText": "the text of the caller"},
         )
         self.assertEqual((scheme["badges"], scheme["labels"], scheme["couple"]), ([], [], None))
         self.assertEqual({seat["mark"] for seat in scheme["seats"]}, {"none"})
@@ -1223,12 +1236,12 @@ class SchemeTest(unittest.TestCase):
         )
         self.assertEqual(scheme["seats"][3]["kind"], "regular")
         self.assertEqual((scheme["seats"][0]["r"], scheme["seats"][0]["colour"]), ("14.25", ""))
-        self.assertTrue(guest(l_table(), [3], mine="3")["single"])
+        self.assertEqual(len(guest(l_table(), [3])["labels"]), 1)
 
     def test_staff_object(self):
         scheme = staff(l_table(), {10: ["G", "L"], 12: []})
         self.assertTrue(scheme["hidden"])
-        self.assertEqual((scheme["mine"], scheme["single"], scheme["labels"]), ("", False, []))
+        self.assertEqual((scheme["planText"], scheme["labels"]), ("", []))
         self.assertNotIn("you", {seat["kind"] for seat in scheme["seats"]})
         self.assertEqual({seat["ring"] for seat in scheme["seats"]}, {False})
         self.assertEqual({seat["colour"] for seat in scheme["seats"]}, {""})
@@ -1258,13 +1271,13 @@ class SchemeTest(unittest.TestCase):
     def test_guest_function_takes_no_letters_and_no_couple(self):
         parameters = inspect.signature(guest_scheme).parameters
         self.assertNotIn("letters", parameters)
-        self.assertEqual(list(parameters), ["table", "own_seats", "mine_text"])
+        self.assertEqual(list(parameters), ["table", "own_seats", "plan_text", "label_width"])
         for name in list(parameters)[1:]:
             self.assertIs(parameters[name].kind, inspect.Parameter.KEYWORD_ONLY)
         with self.assertRaises(TypeError):
-            guest_scheme(l_table(), own_seats=[8], mine_text="8", letters={8: ["A"]})
+            guest_scheme(l_table(), own_seats=[8], plan_text="8", letters={8: ["A"]})
         with self.assertRaises(TypeError):
-            guest_scheme(l_table(), own_seats=[8], mine_text="8", **couple())
+            guest_scheme(l_table(), own_seats=[8], plan_text="8", **couple())
         self.assertEqual(
             list(inspect.signature(staff_scheme).parameters),
             ["table", "couple_seats", "couple_label", "couple_arm", "letters"],
@@ -1320,7 +1333,7 @@ class InputTest(unittest.TestCase):
             lambda: guest(l_table(), [8, 8]),
             lambda: guest(l_table(), [17]),
             lambda: guest(l_table(), [8, 9, 10, 11]),
-            lambda: guest(l_table(), [8], mine=None),
+            lambda: guest(l_table(), [8], text=None),
             lambda: staff(l_table(), {}, pair=couple((4, 5, 6))),
             lambda: staff(l_table(), {}, pair=couple(arm="middle")),
             lambda: staff(l_table(), {}, pair=couple((), arm=None)),
