@@ -26,13 +26,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Sequence
+from typing import Any, Sequence
 
 from menu_tools import _table
 from menu_tools._core import (
     ID_RULE,
     SCHEMA_MISSING as MISSING,
     _Checker,
+    _known_list,
     check_token,
     did_you_mean,
     is_identifier,
@@ -128,8 +129,6 @@ MAX_SEAT = 999
 #: The staff page shows every name and every dietary note: a shorter token
 #: of the staff record gets a warning.
 STAFF_TOKEN_MIN = 16
-#: How many known ids a message lists at most.
-MAX_LISTED = 8
 
 #: The placeholder of a token: no text of the menu may hold it, the pages of
 #: the menu hold no token.
@@ -280,14 +279,6 @@ def _object(
         return None
     check.unknown_fields(value, fields, (*parts, key))
     return value
-
-
-def _known_list(registry: Iterable[str], what: str) -> str:
-    known = [item for item in registry if is_identifier(item)]
-    if not known:
-        return f"; there are no {what}s"
-    listed = ", ".join(known[:MAX_LISTED])
-    return f"; known: {listed}{', …' if len(known) > MAX_LISTED else ''}"
 
 
 def _registry(check: _Checker, obj: dict, key: str, parts: Sequence = (), *, required: bool = False) -> dict | None:

@@ -17,7 +17,7 @@ a field without a usable value (`MISSING` is the one of `_engine`, returned by
 from __future__ import annotations
 
 from menu_tools._checks import MISSING as SCHEMA_MISSING
-from menu_tools._checks import _Checker
+from menu_tools._checks import _Checker, _known_list
 from menu_tools._engine import (
     CI_ENVIRONMENT_VARIABLES,
     EXIT_ERROR,
@@ -99,6 +99,7 @@ __all__ = [
     "format_size",
     # schema messages
     "_Checker",
+    "_known_list",
     "SCHEMA_MISSING",
     # output checks, output directory, masking
     "check_output",
