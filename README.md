@@ -110,8 +110,9 @@ The food of `examples/data`, one section of two parts (a few fields left out):
 ## The table plan
 
 `table` of `menu.json` is the plan of the seats on the pages. `arms` are the
-rectangles of the table (`id`, `x`, `y`, `width`, `height`, in px of a field
-of 318 x 310); each item of `seats` puts `count` seats (one by default) on a
+rectangles of the table (`id`, `x`, `y`, `width`, `height`, in px of the
+field: 318 x 310 unless the table sets `width` and `height` of its own, see
+below); each item of `seats` puts `count` seats (one by default) on a
 side of an arm: `top`, `right`, `bottom` or `left`. A seat's number is its
 place in the list, and the seats of a side go clockwise. The build centres
 the seats of a side on its free part, 22 px off the edge of the table and
@@ -169,6 +170,40 @@ Seats 9-11 follow seat 8 at 42 px. Seats 2-6 do not fit at 42 px to the
 left of seat 7, so they are spread from the left end of the top side to it,
 40.5 px apart, with a warning (as for the five seats of the bottom side,
 which do not fit either).
+
+`width` and `height` of `table` set the size of the field, in px: whole
+numbers, `width` from 240 to 480 and `height` from 160 to 640, both
+optional (318 and 310 by default). Every arm and every seat with the room
+for its "You" label has to lie inside the field; `validate` names a size
+out of its limits and an arm or a seat off the field ("lies outside the
+360x310 field"). The plan is drawn as many px wide as its field on a wide
+screen; on a narrow one it shrinks to the width of its card, keeping its
+proportions, its type with it, and never scrolls sideways - hence the upper
+limit of the width: on the narrowest phones a field of 480 is drawn at
+about 0.6 of its size, its 12 px type at about 7 px. An L-shaped table on
+18 seats in a wider field, both arms 32 px thick: seat 8, the last of the
+top row, sits over the middle of the short arm (`shift` moves the row by
+1 px for it), the six seats under the long arm line up with the seats over
+it, seat 9 with seat 1 and seat 12 with seat 11:
+
+```json
+{
+  "label": "L-shaped table",
+  "width": 360,
+  "height": 310,
+  "arms": [
+    { "id": "long", "x": 39, "y": 40, "width": 282, "height": 32, "shift": { "top": -1 } },
+    { "id": "short", "x": 289, "y": 40, "width": 32, "height": 120 }
+  ],
+  "seats": [
+    { "arm": "long", "side": "left" },
+    { "arm": "long", "side": "top", "count": 7 },
+    { "arm": "short", "side": "right", "count": 3, "align": [1, null, null] },
+    { "arm": "short", "side": "left", "align": [11] },
+    { "arm": "long", "side": "bottom", "count": 6, "align": [7, 6, 5, 4, 3, 2] }
+  ]
+}
+```
 
 A guest page names no seat by its number. Its plan shows the seats of the
 record as larger circles, each in a colour of its own in the order of the
