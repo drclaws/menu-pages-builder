@@ -90,6 +90,7 @@
     {
       "id": "seats",
       "nav": "Seats",
+      "audience": "staff",
       "widgets": [
         {
           "type": "seating"

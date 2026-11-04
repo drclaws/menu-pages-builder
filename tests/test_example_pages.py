@@ -154,15 +154,17 @@ class ExamplePagesTest(unittest.TestCase):
                         self.assertTrue(address.startswith(ASSETS_PREFIX), address)
 
     def test_the_line_of_the_sections(self):
-        expected = {"data": ["Seats", "Food", "Drinks", "Info"],
-                    "data-plain": ["Seats", "Starters", "Mains", "Drinks"]}
+        # (a guest page, the staff page): the plain set's seats are for the
+        # staff alone
+        expected = {"data": (["Seats", "Food", "Drinks", "Info"], ["Seats", "Food", "Drinks", "Info"]),
+                    "data-plain": (["Starters", "Mains", "Drinks"], ["Seats", "Starters", "Mains", "Drinks"])}
         for name, (_out, _menu, _guests, pages, staff) in self.built.items():
             for token, page in pages.items():
                 with self.subTest(set=name, page=token):
                     self.assertEqual(page.count("<nav "), 1)
                     line = re.search(r'<nav class="section-nav" aria-label="Sections" data-section-nav>.*?</nav>',
                                      page, re.S).group(0)
-                    self.assertEqual(re.findall(r">([^<]+)</a>", line), expected[name])
+                    self.assertEqual(re.findall(r">([^<]+)</a>", line), expected[name][token == staff])
                     # before the sections, the first element of a guest page
                     self.assertLess(page.index(line), page.index('<main class="page">'))
                     if token != staff:
@@ -205,23 +207,33 @@ class ExamplePagesTest(unittest.TestCase):
     def test_the_names_under_the_plan_take_the_colours_of_the_seats(self):
         # a name per seat in record order, a +1 without a name is "your
         # guest", a record for two shows its seats' names
-        expected = {
-            "data": {"Greta": ["Greta", "Hugo"], "Trent": ["Trent", "Oscar"], "Heidi": ["Heidi", "your guest"],
-                     "Peggy and Walter": ["Peggy", "Walter"], "Rupert": ["Rupert"]},
-            "data-plain": {"Astrid": ["Astrid", "your guest"], "Ezra": ["Ezra"]},
-        }
-        for name, (_out, _menu, guests, pages, _staff) in self.built.items():
-            tokens = {record.get("name"): record["token"] for record in guests}
-            for person, names in expected[name].items():
-                with self.subTest(set=name, record=person):
-                    found = re.findall(r'<span class="time-label time-label--strong seating__name '
-                                       r'seating__name--colour-(\d)">([^<]*)</span>', pages[tokens[person]])
-                    self.assertEqual(found, [(str(position), who) for position, who in enumerate(names, 1)])
+        expected = {"Greta": ["Greta", "Hugo"], "Trent": ["Trent", "Oscar"], "Heidi": ["Heidi", "your guest"],
+                    "Peggy and Walter": ["Peggy", "Walter"], "Rupert": ["Rupert"]}
+        _out, _menu, guests, pages, _staff = self.built["data"]
+        tokens = {record.get("name"): record["token"] for record in guests}
+        for person, names in expected.items():
+            with self.subTest(record=person):
+                found = re.findall(r'<span class="time-label time-label--strong seating__name '
+                                   r'seating__name--colour-(\d)">([^<]*)</span>', pages[tokens[person]])
+                self.assertEqual(found, [(str(position), who) for position, who in enumerate(names, 1)])
+
+    def test_a_menu_without_a_table_keeps_the_seats_for_the_staff(self):
+        # no card of names alone on a guest page, and no link to it
+        _out, _menu, _guests, pages, staff = self.built["data-plain"]
+        for token, page in pages.items():
+            with self.subTest(page=token):
+                self.assertEqual('id="s-seats"' in page, token == staff)
+                self.assertEqual('href="#s-seats"' in page, token == staff)
+                self.assertNotIn("seating__name", page)
+                self.assertEqual('<table class="seat-table">' in page, token == staff)
 
     def test_a_guest_page_names_no_seat_by_its_number(self):
         for name, (_out, menu, _guests, pages, staff) in self.built.items():
             for token, page in pages.items():
-                seats = re.search(r'<section class="section" id="s-seats".*?</section>', page, re.S).group(0)
+                found = re.search(r'<section class="section" id="s-seats".*?</section>', page, re.S)
+                if found is None:  # the plain set's guest pages
+                    continue
+                seats = found.group(0)
                 text = " ".join(re.sub(r"<[^>]+>", " ", seats).split())
                 with self.subTest(set=name, page=token):
                     if token == staff:
