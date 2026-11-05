@@ -766,8 +766,8 @@ hr {
    Each component is described once. Classes are for styles only; scripts
    hook onto data attributes (data-reveal, data-tabs, data-section-nav).
    States: hover only inside @media (hover: hover); :focus-visible is the ring
-   of section 3; :active is the press; disabled is :disabled and
-   [aria-disabled="true"]. Interactive elements are at least --tap-min.
+   of section 3; :active is the press. The links of the navigation bar are
+   at least --tap-min high and wide, the set tabs at least --tap-min high.
    ========================================================================== */
 
 /* --- Section and its head -------------------------------------------------- */
