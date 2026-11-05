@@ -9,15 +9,9 @@ one staff page with every seat, every dietary need and what to serve
 instead. A Python script checks the data, builds the pages and checks them
 again before it writes them.
 
-<p align="center">
-  <img src=".github/assets/menu-mobile.gif" width="300"
-    alt="A guest's page on a phone: the cover of a wedding dinner, a table plan with the guest's two seats in colour, then the food">
-</p>
-<p align="center">
-  <img src=".github/assets/menu-compare.png"
-    alt="The staff page on a desktop, with numbered seats, dietary badges and a seat list, next to a guest's page on a phone">
-</p>
-<p align="center"><sub>A demo menu with fictional guests: a recording on a phone and a screenshot of both pages.</sub></p>
+![A demo guest menu on a desktop and a phone side by side, scrolling in sync: the cover, the seats, the food with a switch between two sets, the drinks and the practical notes](.github/assets/demo.gif)
+
+A guest's page of a demo menu with fictional guests, on a desktop and a phone.
 
 ## Features
 
