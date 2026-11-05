@@ -48,15 +48,15 @@ STEP_NAMES = [
 #: The build step commands (comments and `set -euo pipefail` aside).
 BUILD_COMMANDS = {
     BUILD_MAIN: [
-        "python build.py validate",
-        'python build.py build --out "$RUNNER_TEMP/dist"',
+        "python3 build.py validate",
+        'python3 build.py build --out "$RUNNER_TEMP/dist"',
     ],
     BUILD_PLAIN: [
-        "python build.py validate --data examples/data-plain",
-        'python build.py build --data examples/data-plain --out "$RUNNER_TEMP/dist-plain"',
+        "python3 build.py validate --data examples/data-plain",
+        'python3 build.py build --data examples/data-plain --out "$RUNNER_TEMP/dist-plain"',
     ],
     BUILD_BASE_PATH: [
-        'python build.py build --base-path /menu --out "$RUNNER_TEMP/site/menu"',
+        'python3 build.py build --base-path /menu --out "$RUNNER_TEMP/site/menu"',
     ],
 }
 
@@ -429,7 +429,7 @@ class CiWorkflowTest(unittest.TestCase):
         # the main set is built once at the top of a site and once under the
         # base path of a real site; every build writes to the runner's directory
         builds = [line for block in self.named.values() for line in commands(block)
-                  if line.startswith("python build.py build")]
+                  if line.startswith("python3 build.py build")]
         self.assertTrue(all("--out \"$RUNNER_TEMP/" in line for line in builds), builds)
 
     def test_the_check_reads_every_build(self):
