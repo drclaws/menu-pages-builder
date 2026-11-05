@@ -468,7 +468,7 @@ class CiWorkflowTest(unittest.TestCase):
             token = page.parent.name
             original = page.read_text(encoding="utf-8")
             # the pages that passed above have navigation bar links
-            self.assertIn('<a class="section-nav__link" href="#s-seats"', original)
+            self.assertIn('<a class="section-nav__link" href="#s-starters"', original)
 
             def with_body(markup):
                 return original.replace("</main>", f"{markup}</main>", 1)

@@ -351,7 +351,8 @@ class GuestPageTest(unittest.TestCase):
         soft, wines = drinks["groups"]
         self.assertEqual(
             soft,
-            {"title": "Soft drinks", "layout": "inline", "joined": "Still and sparkling water, Lemonade and apple juice", "items": []},
+            {"title": "Soft drinks", "layout": "inline", "joined": f"Still and sparkling water{DOT}Lemonade and apple juice",
+             "items": []},
         )
         self.assertEqual((wines["title"], wines["layout"], wines["joined"]), ("Wines", "list", ""))
         self.assertEqual(
@@ -425,7 +426,7 @@ class StaffPageTest(unittest.TestCase):
         self.assertEqual((rows[9]["name"], rows[9]["isPlusOne"], rows[9]["hostLine"]), ("", True, "Olga’s guest"))
         self.assertEqual((rows[19]["name"], rows[19]["isPlusOne"], rows[19]["hostLine"]), ("Greta", False, ""))
         self.assertEqual((rows[2]["name"], rows[3]["name"], rows[3]["tags"]), ("Peggy", "Victor", ["vegan"]))
-        self.assertEqual((rows[6]["name"], rows[6]["roleLabel"], rows[6]["isCouple"]), ("Vera", "bride", True))
+        self.assertEqual((rows[6]["name"], rows[6]["roleLabel"], rows[6]["isCouple"]), ("Vera", "host", True))
         self.assertEqual(rows[7]["tags"], ["no gluten"])
         self.assertEqual(rows[10]["tags"], ["no gluten", "no lactose"])
 
@@ -776,7 +777,7 @@ class ContractTest(unittest.TestCase):
         (guest,) = widgets(trees.guests[0].tree, "drinks")
         self.assertEqual(
             guest["groups"],
-            [{"title": "", "layout": "inline", "joined": "Still and sparkling water, Homemade lemonade", "items": []}],
+            [{"title": "", "layout": "inline", "joined": f"Still and sparkling water{DOT}Homemade lemonade", "items": []}],
         )
         self.assertEqual(guest["note"], "")
         (staff,) = widgets(trees.staff.tree, "drinks")
