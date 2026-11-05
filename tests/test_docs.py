@@ -17,11 +17,18 @@ DOCS = ROOT / "docs"
 
 #: A Markdown link or image: [text](target).
 _LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)\)")
-#: The source of an HTML image: <img src="target">.
-_SRC_RE = re.compile(r'\ssrc="([^"]+)"')
-#: An HTML image tag, possibly over several lines.
-_IMG_RE = re.compile(r"<img\b[^>]*>")
-_FENCE_RE = re.compile(r"^```")
+#: A Markdown image: ![alt text](source).
+_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)\)")
+#: An HTML tag or comment, opening or closing, possibly over several lines.
+_HTML_RE = re.compile(r"</?[A-Za-z][A-Za-z0-9-]*(?:\s[^>]*)?/?>|<!--")
+#: An inline code span: `code`, possibly over several lines.
+_CODE_SPAN_RE = re.compile(r"`[^`]*`")
+#: An escaped '<', which Markdown shows as it is.
+_ESCAPED_LT_RE = re.compile(r"\\<")
+#: The fence that opens or closes a fenced code block, possibly indented.
+_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+#: An absolute address: a scheme and a colon.
+_SCHEME_RE = re.compile(r"[a-z][a-z0-9+.-]*:")
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 _JSON_BLOCK_RE = re.compile(r"^```json\n(.*?)^```$", re.M | re.S)
 
@@ -31,15 +38,37 @@ def documents() -> list:
 
 
 def prose_lines(path) -> list[str]:
-    """The lines of a Markdown file outside its fenced code blocks."""
-    lines, fenced = [], False
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if _FENCE_RE.match(line):
-            fenced = not fenced
-            continue
-        if not fenced:
+    """The lines of a Markdown file, each line of a fenced code block blanked."""
+    return prose(path.read_text(encoding="utf-8"))
+
+
+def prose(text: str) -> list[str]:
+    """The lines of a Markdown text, each line of a fenced code block (fences
+    included) blanked, so that an index into the list is a line of the text.
+
+    Fences may use backticks or tildes and may be indented; indented (4-space)
+    code blocks are not recognised: the documents use fences only."""
+    lines, fence = [], ""
+    for line in text.splitlines():
+        match = _FENCE_RE.match(line)
+        if not fence and match:
+            fence = match.group(1)
+        elif fence and match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence):
+            fence = ""
+        elif not fence:
             lines.append(line)
+            continue
+        lines.append("")
     return lines
+
+
+def html_tags(lines: list[str]) -> list[tuple[int, str]]:
+    """(line number, tag) of every HTML tag or comment in the prose lines,
+    outside code spans; a tag may run over several lines."""
+    text = "\n".join(lines)
+    text = _CODE_SPAN_RE.sub(lambda match: "\n" * match.group().count("\n"), text)
+    text = _ESCAPED_LT_RE.sub("", text)
+    return [(text.count("\n", 0, match.start()) + 1, match.group()) for match in _HTML_RE.finditer(text)]
 
 
 def slug(heading: str) -> str:
@@ -106,8 +135,8 @@ class LinkTest(unittest.TestCase):
         checked = 0
         for document in documents():
             for line in prose_lines(document):
-                for target in [*_LINK_RE.findall(line), *_SRC_RE.findall(line)]:
-                    if re.match(r"[a-z][a-z0-9+.-]*:", target):
+                for target in _LINK_RE.findall(line):
+                    if _SCHEME_RE.match(target):
                         continue  # an absolute address
                     with self.subTest(document=document.name, link=target):
                         path, _, anchor = target.partition("#")
@@ -119,20 +148,49 @@ class LinkTest(unittest.TestCase):
                     checked += 1
         self.assertGreater(checked, 10)
 
-    def test_the_readme_shows_every_image_with_a_text(self):
-        text = "\n".join(prose_lines(README))
-        images = _IMG_RE.findall(text)
-        sources = []
-        for image in images:
-            match = _SRC_RE.search(image)
-            self.assertIsNotNone(match, image)
-            sources.append(match.group(1))
+    def test_the_readme_shows_every_image_once_with_a_text(self):
+        images = _IMAGE_RE.findall("\n".join(prose_lines(README)))
+        local = [(alt, source) for alt, source in images if not _SCHEME_RE.match(source)]
         shown = sorted(name for name in tracked_files() if name.startswith(".github/assets/"))
         self.assertTrue(shown)
-        self.assertEqual(sorted(sources), shown)
-        for image in images:
-            with self.subTest(image=image):
-                self.assertRegex(image, r'\salt="[^"]{20,}"')
+        self.assertEqual(sorted(source for _, source in local), shown)
+        for alt, source in local:
+            with self.subTest(image=source):
+                self.assertGreaterEqual(len(alt.strip()), 20)
+
+    def test_the_documents_hold_no_html(self):
+        markdown = sorted(name for name in tracked_files() if name.endswith(".md"))
+        self.assertIn("README.md", markdown)
+        for name in markdown:
+            for number, tag in html_tags(prose_lines(ROOT / name)):
+                with self.subTest(document=name, line=number):
+                    self.fail(tag)
+
+    def test_the_html_check_sees_tags_but_not_code(self):
+        tags = {
+            '<p align="center">': [1],
+            "</p>": [1],
+            "<img src=x>": [1],
+            "<br/>": [1],
+            "<!-- note -->": [1],
+            "a <sub>b</sub>": [1, 1],
+            "text\n<img\n  src=x alt=y>": [2],
+            "<a\n href=x>link</a>": [1, 2],
+        }
+        plain = (
+            "`<base path>/<token>/`", "a < b > c", "x -> y", "`<p>`", "`a\n<p> b`", r"\<p> escaped",
+            "<https://example.org>", "<mailto:a@example.org>", "<a@example.org>",
+        )
+        for text, lines in tags.items():
+            with self.subTest(text=text):
+                self.assertEqual([number for number, _ in html_tags(text.split("\n"))], lines)
+        for text in plain:
+            with self.subTest(text=text):
+                self.assertEqual(html_tags(text.split("\n")), [])
+
+    def test_the_prose_blanks_every_kind_of_fence(self):
+        text = "a\n```\n<p>\n```\nb\n~~~json\n<p>\n```\n~~~\n- item\n\n  ```\n  <p>\n  ```\nc\n````\n```\n````\nd"
+        self.assertEqual(prose(text), ["a", "", "", "", "b", "", "", "", "", "- item", "", "", "", "", "c", "", "", "", "d"])
 
     def test_the_readme_links_every_document(self):
         text = README.read_text(encoding="utf-8")
