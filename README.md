@@ -9,6 +9,16 @@ one staff page with every seat, every dietary need and what to serve
 instead. A Python script checks the data, builds the pages and checks them
 again before it writes them.
 
+<p align="center">
+  <img src=".github/assets/menu-mobile.gif" width="300"
+    alt="A guest's page on a phone: the cover of a wedding dinner, a table plan with the guest's two seats in colour, then the food">
+</p>
+<p align="center">
+  <img src=".github/assets/menu-compare.png"
+    alt="The staff page on a desktop, with numbered seats, dietary badges and a seat list, next to a guest's page on a phone">
+</p>
+<p align="center"><sub>A demo menu with fictional guests: a recording on a phone and a screenshot of both pages.</sub></p>
+
 ## Features
 
 - **A page per guest.** The menu, the set menus to choose from, the drinks,
@@ -241,9 +251,9 @@ python3 -m unittest discover -s tests -t .
 ```
 
 CI runs the tests on Python 3.10 to 3.13, checks the repository's hygiene
-(no tracked media or build output), builds both example sets, one of them
-under a base path, checks the built pages and builds once more to compare
-the bytes.
+(no media but the README images in `.github/assets/`, no tracked build
+output), builds both example sets, one of them under a base path, checks
+the built pages and builds once more to compare the bytes.
 
 `BUILD_DEBUG=1` shows the traceback of an unexpected failure, which the
 commands otherwise report by its type and place only.
