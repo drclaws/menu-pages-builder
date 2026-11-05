@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Repository hygiene (no tracked media, no tracked build output)
+      - name: Repository hygiene (README images only, no tracked build output)
         run: |
           set -euo pipefail
           # Names are read NUL-separated and unquoted, so non-ASCII names are matched as is.
@@ -55,11 +55,25 @@ jobs:
             echo "Tracked file names must not contain line breaks or carriage returns" >&2
             exit 1
           fi
-          # Every tracked file is checked: the repository carries no media at all.
+          # Every tracked file is checked: the only media are the README images,
+          # png, jpg or gif files directly in .github/assets/, of 8 MB at most.
           media="$(tracked | grep -aEi '\.(png|jpe?g|webp|gif|avif|mp4|mov|webm|ico|svg)$' || true)"
-          if [ -n "$media" ]; then
-            echo "Media files must not be tracked:" >&2
-            echo "$media" >&2
+          misplaced="$(grep -avE '^\.github/assets/[^/]+\.(png|jpe?g|gif)$' <<<"$media" || true)"
+          if [ -n "$misplaced" ]; then
+            echo "Media files may be tracked only as png, jpg or gif images in .github/assets/:" >&2
+            echo "$misplaced" >&2
+            exit 1
+          fi
+          large=""
+          while IFS= read -r name; do
+            size="$(wc -c < "$name")"
+            if [ "$size" -gt 8388608 ]; then
+              large+="$name"$'\n'
+            fi
+          done < <(tracked .github/assets)
+          if [ -n "$large" ]; then
+            echo "Files in .github/assets/ must not exceed 8 MB:" >&2
+            printf '%s' "$large" >&2
             exit 1
           fi
           output="$(tracked dist)"
@@ -68,16 +82,21 @@ jobs:
             echo "$output" >&2
             exit 1
           fi
-          echo "OK: no tracked media or build output"
+          echo "OK: no media outside .github/assets/, no tracked build output"
 
       - name: No Cyrillic in tracked files
         run: |
           set -euo pipefail
           # Every tracked file of this repository, read as UTF-8.  A name or a file
           # that is not UTF-8 is refused too: Cyrillic in another encoding would go
-          # unseen.  Only file names and line numbers are printed, never the text.
+          # unseen.  The README images (the only media the hygiene step allows) are
+          # binary: only their names are checked, as long as they start with the
+          # signature of a png, gif or jpeg file.  Only file names and line numbers
+          # are printed, never the text.
           git ls-files -z | python -c '
-          import sys
+          import re, sys
+          IMAGE = re.compile(r"\.github/assets/[^/]+\.(png|jpe?g|gif)")
+          SIGNATURES = (b"\x89PNG\r\n\x1a\n", b"GIF87a", b"GIF89a", b"\xff\xd8\xff")
           def cyrillic(text):
               return any(0x400 <= ord(char) <= 0x4FF for char in text)
           found = []
@@ -89,7 +108,10 @@ jobs:
                   if cyrillic(raw.decode("utf-8")):
                       found.append(f"{name}: in the file name")
                   with open(raw, "rb") as handle:
-                      text = handle.read().decode("utf-8")
+                      data = handle.read()
+                  if IMAGE.fullmatch(name) and data.startswith(SIGNATURES):
+                      continue
+                  text = data.decode("utf-8")
                   found += [f"{name}:{number}" for number, line in
                             enumerate(text.split("\n"), 1) if cyrillic(line)]
               except UnicodeDecodeError:
