@@ -108,20 +108,20 @@ jobs:
       - name: Validate and build the main example set
         run: |
           set -euo pipefail
-          python build.py validate
-          python build.py build --out "$RUNNER_TEMP/dist"
+          python3 build.py validate
+          python3 build.py build --out "$RUNNER_TEMP/dist"
 
       - name: Validate and build the set without a table
         run: |
           set -euo pipefail
-          python build.py validate --data examples/data-plain
-          python build.py build --data examples/data-plain --out "$RUNNER_TEMP/dist-plain"
+          python3 build.py validate --data examples/data-plain
+          python3 build.py build --data examples/data-plain --out "$RUNNER_TEMP/dist-plain"
 
       - name: Build the main example set under a base path
         run: |
           set -euo pipefail
           # the layout a real site uses: the menu in a directory of the site
-          python build.py build --base-path /menu --out "$RUNNER_TEMP/site/menu"
+          python3 build.py build --base-path /menu --out "$RUNNER_TEMP/site/menu"
 
       - name: Check the built pages
         run: |
@@ -150,7 +150,7 @@ jobs:
                       assert target and target.group(1) in ids, f"{out}: a link of a page leads to no part of it"
               assets = sorted(path.name for path in (out / "assets").iterdir())
               assert assets == ["app.css", "app.js", "favicon.svg"], f"{out}/assets: {assets}"
-              # a token is the name of the directory of its page and nothing else
+              # a token is only the name of its page directory
               lowered = [token.lower() for token in tokens]
               for path in sorted(out.rglob("*")):
                   if path.is_file():
@@ -165,7 +165,7 @@ jobs:
       - name: Reproducible build
         run: |
           set -euo pipefail
-          python build.py build --out "$RUNNER_TEMP/dist2"
+          python3 build.py build --out "$RUNNER_TEMP/dist2"
           tree_hash() {
             (cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
           }

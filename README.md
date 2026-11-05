@@ -1,156 +1,187 @@
 # Personal dinner menus
 
-A builder of static personal dinner-menu pages: one page per guest (their
-seats, the menu, drinks) and one staff page for the restaurant, each at its own
-secret address.
+Static per-guest dinner menus with a seat plan, plus a staff sheet, built
+from two JSON files.
 
-The principles behind all of the code:
+Every guest gets a page of their own at a secret address: the menu, the
+drinks and a plan of the table with their seats marked. The restaurant gets
+one staff page with every seat, every dietary need and what to serve
+instead. A Python script checks the data, builds the pages and checks them
+again before it writes them.
 
-- **static pages only** - no server, no database, no forms; the data is put
-  into the HTML when the pages are built;
-- **privacy by construction** - a guest's page holds nothing about other
-  guests, and no page makes a single request to another domain;
-- **progressive enhancement** - everything on a page is readable without
-  JavaScript;
-- **code and data kept apart** - this repository holds only code and fictional
-  examples.
+## Features
 
-## Status
+- **A page per guest.** The menu, the set menus to choose from, the drinks,
+  and a table plan with the guest's seats in colour. One page can serve a
+  guest and up to two companions.
+- **A staff sheet.** The plan with dietary badges and a legend, a seat table
+  with names and needs, a swap line for every dish a seat cannot have
+  ("Seat 4 — serve a portion without walnuts"), the drinks with bottles and
+  serving notes.
+- **Privacy.** Secret addresses, no data about other guests on a guest's
+  page, no requests to other servers, `noindex` on every page.
+- **Works without JavaScript.** Everything on a page is readable without
+  it; the script adds tabs for the set menus, marks the current section in
+  the navigation bar and fades the sections in.
+- **Any language.** English by default; two fields in `menu.json`
+  translate every word on the pages, with plural rules built in.
+- **Python standard library only.** Python 3.10 or newer, no packages, no
+  build tools.
+- **Reproducible, self-checked output.** The same data always gives
+  byte-identical output, and a build replaces the previous one only after
+  every output check has passed.
 
-The builder works: it checks the data, builds the pages and checks the
-finished output. The example data sets in `examples/` show every part of the
-data format.
+## Quick start
 
-## What's where
+From the root of the repository, with the fictional example data in
+`examples/data`:
 
 ```
-build.py               command line entry point: build, validate, links, token
-menu_tools/            the package of the builder
-  _engine.py           the template engine, the report of a command, the output directory and its checks
-  _values.py           JSON, field paths in messages, ids and tokens
-  _checks.py           the messages of the data checks
-  _tokens.py           the design tokens of the style sheet
-  _icon.py             the icon, in the colours of the design tokens
-  _core.py             the names the rest of the package takes from the modules above
-  _schema.py           the checks of menu.json and guests.json
-  _page.py             the page trees of the guests and of the staff
-  _words.py            the words the build joins with numbers and names
-  _table.py            the table plan: seat numbers, layout, the scheme
-  _output.py           the checks of the finished output
-template.html          the page template
-fragments/             the fragments of the sections, the widgets and their parts
-  partials/section-nav.html   the line of the sections at the top of a page
-  widgets/heading.html        the heading of a part of a section
-assets/                the style sheet and the script of the pages
-examples/data/         fictional data: an L-shaped table of 19 seats, dietary notes, a staff page
-examples/data-plain/   fictional data without a table and dietary notes
-tests/                 unit tests (unittest, standard library only)
-.github/workflows/     unit tests, repository hygiene, builds of the examples and their checks
-LICENSE                the MIT license
+python3 build.py validate
 ```
 
-## Sections and navigation
+checks the data and prints a summary:
+`validate: OK - 19 seat(s), 12 guest record(s) + staff, 8 dish(es), 2 set(s), 5 drink(s)`.
 
-`sections` of `menu.json` are the sections of a page in their order: the
-cover (`"type": "cover"`, first) and sections of widgets. A widget is a text,
-the seating, a list of dishes, the set switcher, the drinks or a heading.
-`audience` (`all`, `guest` or `staff`) and `visible` choose the pages a
-section or a widget is on; a guest record can switch them for its own page.
+```
+python3 build.py build
+```
 
-- `nav` of a section is the short label of its link in the line of the
-  sections at the top of the page: one line of text, not empty. A section
-  without it (the closing signature, say) has no link there, and a page links
-  only the sections it shows. The cover has no label; two sections with the
-  same label (letter case aside) get a warning.
-- A widget of the type `heading` heads a part of its section: `title` (an
-  h3), `eyebrow` in small capitals under it, and `staff: { title, eyebrow }`
-  for the staff page. The widgets after it, up to the next heading, are its
-  part; a set card in a part is an h4. A heading with nothing under it on a
-  page is left out of that page, and `validate` warns about a heading at the
-  end of a section or right before another one. `title` of a list of dishes
-  stays a caption in small capitals, not a heading.
+writes the pages into `dist/`: a directory per page, named after the
+record's token, and `assets/`.
 
-The line is a row of plain links to the sections of the page: nothing is
-hidden, and without JavaScript a link jumps to its section. With it, the link
-of the section in view is marked (`aria-current`), and a click keeps the mark
-of its link while the page scrolls there. On the screen the line sticks to
-the top, a section reached by a link stops under it, the scroll glides unless
-the reader asks for less motion, and a line too long for the screen scrolls
-sideways by itself; on a touch screen the body scrolls the page. Print leaves
-the line out.
+```
+python3 build.py links --url http://localhost:8000
+```
 
-A page links only to its own parts: every `<a>` and `<area>` of the output has
-an `href` of the form `#<id>`, the id of an element of the same page. The
-build and CI refuse any other link, and no file of the output holds a token.
+prints the address of every page, a guest per line and the staff page last:
 
-The food of `examples/data`, one section of two parts (a few fields left out):
+```
+Greta	http://localhost:8000/egret-xnmg/
+Peggy and Walter	http://localhost:8000/plover-32fe/
+...
+staff	http://localhost:8000/DmFnSjs_glP7Qu8z8_MRKw/
+```
+
+```
+python3 -m http.server -d dist 8000
+```
+
+serves the pages. Open one of the printed addresses in a browser: a guest's
+page, or the staff page from the last line.
+
+### Your own dinner
+
+1. Copy `examples/data` to `../my-dinner`, outside this repository: the data
+   holds names, and this repository holds only code and fictional examples.
+2. Write the menu into `menu.json` and the guests into `guests.json` (see
+   [the data in brief](#the-data-in-brief)). Make a readable token for each
+   guest with `python3 build.py token --prefix Greta`, and a random one for
+   the staff with `python3 build.py token`.
+3. Check the data until it passes:
+   `python3 build.py validate --data ../my-dinner`.
+4. Build it for the path where it will be published:
+   `python3 build.py build --data ../my-dinner --out ../my-dinner-pages --base-path /menu`.
+5. Upload the contents of `../my-dinner-pages` to `/menu/` on any static
+   host, then print the links and send each guest theirs:
+   `python3 build.py links --data ../my-dinner --url https://example.org/menu`.
+
+## How it works
+
+1. **Data.** `build.py` reads `menu.json` and `guests.json` from the data
+   directory.
+2. **Checks.** It checks both files and reports every problem at once,
+   naming the place in the data without quoting it.
+3. **Pages.** It builds each guest page from two parts only: the shared menu
+   without its staff-only parts, and the guest's own record. The staff page
+   gets everything.
+4. **Template.** It renders each page with `template.html` and the fragments
+   in `fragments/`, next to the style sheet and the script in `assets/`.
+5. **Output checks.** It writes the output to a new directory beside
+   `--out`, checks it (expected files only, local addresses only, no token in
+   any file) and only then swaps it in.
+
+## Privacy model
+
+- **Secret addresses.** A page lives at `<base path>/<token>/`. There is no
+  index page, and no output file contains a token, not even the page it
+  names.
+- **Nothing about others.** A guest page is built from the shared menu and
+  the guest's own record alone: no other guest, no dietary needs, no seat
+  numbers, no hosts' seats. The staff page holds no token and no guest's
+  personal note.
+- **No requests to other servers.** No web fonts, analytics or embeds; the
+  style sheet, the script and the icon come from the page's own `assets/`,
+  with no inline script or style, and every link leads to a part of the same
+  page.
+- **Kept out of search and previews.** Every page asks search engines to
+  keep away (`noindex, nofollow`), sends no referrer and has no link-preview
+  tags.
+- **Quiet tools.** Messages never quote the data and hide tokens in paths;
+  `links`, the one command that prints names and addresses, refuses to run
+  in CI.
+
+## The data in brief
+
+A menu without a table: a cover, a staff-only seat list and the food.
 
 ```json
 {
-  "id": "food",
-  "title": "Food",
-  "nav": "Food",
-  "widgets": [
-    {
-      "type": "heading",
-      "title": "Starters",
-      "eyebrow": "Shared plates for the table",
-      "staff": { "eyebrow": "Shared plates · on the table by 19:15" }
-    },
-    { "type": "dishes", "items": ["bruschetta", "cheese-board", "hummus"] },
-    { "type": "dishes", "audience": "staff", "title": "On request", "items": ["melon"] },
-    {
-      "type": "heading",
-      "title": "Main course",
-      "eyebrow": "Choose one of two sets",
-      "staff": { "eyebrow": "Two sets · guests choose at the table" }
-    },
-    { "type": "sets", "items": ["fish", "meat"] },
-    { "type": "text", "id": "allergy-card", "audience": "guest", "variant": "card", "text": "…" }
+  "schemaVersion": 1,
+  "coupleNames": "Ada & Ben",
+  "event": {
+    "title": "Birthday dinner",
+    "when": "3 May 2031, 19:30",
+    "place": "Example Bistro · Example Street 1"
+  },
+  "dishes": {
+    "soup": { "name": "Pumpkin soup", "ingredients": "Pumpkin, ginger, cream" },
+    "risotto": { "name": "Mushroom risotto", "ingredients": "Rice, mushrooms, parmesan" }
+  },
+  "sections": [
+    { "id": "cover", "type": "cover" },
+    { "id": "seats", "nav": "Seats", "audience": "staff", "widgets": [{ "type": "seating" }] },
+    { "id": "food", "title": "Food", "nav": "Food", "widgets": [{ "type": "dishes", "items": ["soup", "risotto"] }] }
   ]
 }
 ```
 
+`coupleNames` names the hosts of the dinner, whoever they are. `guests.json`
+holds one record per page, plus the staff record:
+
+```json
+[
+  { "token": "Clara-7hqe", "name": "Clara", "seats": [{ "number": 1 }] },
+  {
+    "token": "Dan-and-Eve-p4xw",
+    "name": "Dan and Eve",
+    "seats": [{ "number": 2, "name": "Dan" }, { "number": 3, "name": "Eve" }]
+  },
+  { "token": "ElGMUjWqGAfAa53K7D5-jQ", "staff": true }
+]
+```
+
+Add dietary `requirements` and `allergens`, set menus, drinks, a `table`,
+texts and headings, sections hidden for most guests and shown for a few.
+The examples use most of the format; [the data format](docs/data-format.md)
+describes all of it.
+
 ## The table plan
 
-`table` of `menu.json` is the plan of the seats on the pages. `arms` are the
-rectangles of the table (`id`, `x`, `y`, `width`, `height`, in px of the
-field: 318 x 310 unless the table sets `width` and `height` of its own, see
-below); each item of `seats` puts `count` seats (one by default) on a
-side of an arm: `top`, `right`, `bottom` or `left`. A seat's number is its
-place in the list, and the seats of a side go clockwise. The build centres
-the seats of a side on its free part, 22 px off the edge of the table and
-42 px apart; only when they do not fit at 42 px are they spread evenly over
-the free part, the outer seats 15 px from its ends, with a warning, down to
-34 px apart. A side ends 22 px before an arm that adjoins it, so the
-corner between two arms stays free. `shift` of an arm moves the seats of a
-side along it, by at most 42 px.
+`table` in `menu.json` draws the table on every page. In brief:
 
-`align` of an item lines its seats up with other seats: an element per seat
-of the item, in the order of their numbers - the number of another seat, or
-`null` for a seat that the layout places. A seat with a number takes the
-coordinate of that seat along its own side (x on the top and the bottom, y
-on the left and the right) and keeps its distance from the edge of the
-table. The other seats of its side are placed around the aligned ones:
+- `arms` are rectangles in a field of 318 x 310 px (or `width` x `height`);
+- each item of `seats` puts `count` seats on one side of an arm, and a
+  seat's number is its place in that list, clockwise on each side;
+- the build centres the seats of a side 42 px apart, 22 px off the edge,
+  and squeezes them, with a warning, when they do not fit;
+- `align` lines a seat up with another one, across the table or round a
+  corner;
+- `validate` refuses seats closer than 34 px, a seat off the field and a
+  side split in two by another arm.
 
-- between two aligned seats - evenly;
-- before the first and after the last aligned seat - 42 px apart, outwards
-  from it; when they do not fit into the free part of the side (the outer
-  seat 15 px from its end), evenly between that point and the aligned seat,
-  with the usual warning below 42 px and an error below 34 px.
-
-A side without numbers in `align` keeps the layout above, and `shift` has no
-effect on a side with aligned seats. A seat may align to a seat that comes
-later in the list, and alignments may form a chain. `validate` and `build`
-refuse an alignment to the seat itself or to a seat of the same side of the
-same arm, a circle of alignments, and a seat lined up off the free part of
-its side (off the table or into the free corner) or out of the clockwise
-order of its side.
-
-An L-shaped table of 19 seats: the first seat of the right side (8) faces
-the seat at the end of the long arm (1), the last seat of the top row (7)
-sits over the seat at the end of the short arm (12), and seats 13 and 14
-inside the short arm face seats 11 and 10:
+An L-shaped table of 19 seats, in which seat 8 faces seat 1, seat 7 sits over
+seat 12, and seats 13 and 14 face seats 11 and 10:
 
 ```json
 {
@@ -170,82 +201,53 @@ inside the short arm face seats 11 and 10:
 }
 ```
 
-Seats 9-11 follow seat 8 at 42 px. Seats 2-6 do not fit at 42 px to the
-left of seat 7, so they are spread from the left end of the top side to it,
-40.5 px apart, with a warning (as for the five seats of the bottom side,
-which do not fit either).
+A guest's plan marks the guest's seats in colour and names no seat by its
+number; the staff plan numbers every seat and shows the dietary badges.
+[The table plan](docs/table-plan.md) gives the full geometry and a second
+example.
 
-`width` and `height` of `table` set the size of the field, in px: whole
-numbers, `width` from 240 to 480 and `height` from 160 to 640, both
-optional (318 and 310 by default). Every arm and every seat with the room
-for its "You" label has to lie inside the field; `validate` names a size
-out of its limits and an arm or a seat off the field ("lies outside the
-360x310 field"). The plan is drawn as many px wide as its field on a wide
-screen; on a narrow one it shrinks to the width of its card, keeping its
-proportions, its type with it, and never scrolls sideways - hence the upper
-limit of the width: on the narrowest phones a field of 480 is drawn at
-about 0.6 of its size, its 12 px type at about 7 px. An L-shaped table on
-18 seats in a wider field, both arms 32 px thick: seat 8, the last of the
-top row, sits over the middle of the short arm (`shift` moves the row by
-1 px for it), the six seats under the long arm line up with the seats over
-it, seat 9 with seat 1 and seat 12 with seat 11:
+## Languages
+
+`lang` (a language tag such as `de` or `sr-Latn`) and `strings` (the words
+of the pages) in `menu.json` translate the pages. An English menu may change
+a single word, such as the page title:
 
 ```json
-{
-  "label": "L-shaped table",
-  "width": 360,
-  "height": 310,
-  "arms": [
-    { "id": "long", "x": 39, "y": 40, "width": 282, "height": 32, "shift": { "top": -1 } },
-    { "id": "short", "x": 289, "y": 40, "width": 32, "height": 120 }
-  ],
-  "seats": [
-    { "arm": "long", "side": "left" },
-    { "arm": "long", "side": "top", "count": 7 },
-    { "arm": "short", "side": "right", "count": 3, "align": [1, null, null] },
-    { "arm": "short", "side": "left", "align": [11] },
-    { "arm": "long", "side": "bottom", "count": 6, "align": [7, 6, 5, 4, 3, 2] }
-  ]
-}
+{ "strings": { "pageTitle": "Supper" } }
 ```
 
-A guest page names no seat by its number. Its plan shows the seats of the
-record as larger circles, each in a colour of its own in the order of the
-seats of the record - blue (the accent), dark red, green - and under the plan
-a label of the same colour per seat names who sits there: the name of the
-seat, the name of the record at a first seat without one, "your guest" at a
-+1 without a name. The one seat of a record of one seat has the label "You"
-by it as well. The colours differ in lightness enough to tell them apart in
-grey and with a colour vision deficiency, and the text of the plan for a
-screen reader says in words whose seat is marked in which colour. So a
-record has at most three seats: `validate` and `build` refuse more (split
-such a record in two). The couple, its label and the numbers of the seats
-are on the staff plan alone.
+A menu in another language gives every word; `validate` lists the missing
+ones. [Languages](docs/languages.md) has every key, the plural rules and a
+complete sample in Serbian (Latin script).
 
-## Commands
+## Documentation
 
-| Command | What it does |
-|---|---|
-| `python3 build.py build [--data DIR] [--out DIR] [--base-path PATH]` | checks the data, writes `<token>/index.html` for every guest record and for the staff record and `assets/` into `--out` (default: `dist`), which is replaced only when every check of the output has passed |
-| `python3 build.py validate [--data DIR]` | checks the data and prints a summary; writes nothing |
-| `python3 build.py links --url URL [--data DIR]` | prints the name of every guest record and the address of its page, `URL/<token>/`, the staff page last; the lines hold personal data, so the command is for local use only and refuses to run in CI |
-| `python3 build.py token [--prefix NAME]` | prints a new token: fully random (for the staff record) or readable, `NAME-xxxx` |
+- [Command line](docs/cli.md): the commands, their options, the output
+  directory, the messages and the exit codes.
+- [Data format](docs/data-format.md): every field of `menu.json` and
+  `guests.json`, the sections and the widgets.
+- [Table plan](docs/table-plan.md): the geometry of the plan, alignment, the
+  guest's and the staff plan.
+- [Languages](docs/languages.md): `lang`, `strings`, plural forms, scripts and
+  fonts.
 
-`--data` is a directory with `menu.json` and `guests.json` (default:
-`examples/data` next to `build.py`). `--base-path` is the path from the root of
-the site under which the output is published (default: `/`).
+## Development
 
-Exit codes: `0` - success; `1` - errors in the data or in the finished output,
-an `--out` that is not replaced or `links` in CI; `2` - a bad command line.
-
-## Tests
-
-Python 3.10 or newer is required; there are no third-party packages.
+Python 3.10 or newer; there are no third-party packages. The tests use
+`unittest`:
 
 ```
 python3 -m unittest discover -s tests -t .
 ```
 
-## License
+CI runs the tests on Python 3.10 to 3.13, checks the repository's hygiene
+(no tracked media or build output), builds both example sets, one of them
+under a base path, checks the built pages and builds once more to compare
+the bytes.
+
+`BUILD_DEBUG=1` shows the traceback of an unexpected failure, which the
+commands otherwise report by its type and place only.
+
+## Licence
 
 MIT, see [LICENSE](LICENSE).
