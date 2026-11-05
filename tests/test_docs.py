@@ -17,6 +17,10 @@ DOCS = ROOT / "docs"
 
 #: A Markdown link or image: [text](target).
 _LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)\)")
+#: The source of an HTML image: <img src="target">.
+_SRC_RE = re.compile(r'\ssrc="([^"]+)"')
+#: An HTML image tag, possibly over several lines.
+_IMG_RE = re.compile(r"<img\b[^>]*>")
 _FENCE_RE = re.compile(r"^```")
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 _JSON_BLOCK_RE = re.compile(r"^```json\n(.*?)^```$", re.M | re.S)
@@ -102,7 +106,7 @@ class LinkTest(unittest.TestCase):
         checked = 0
         for document in documents():
             for line in prose_lines(document):
-                for target in _LINK_RE.findall(line):
+                for target in [*_LINK_RE.findall(line), *_SRC_RE.findall(line)]:
                     if re.match(r"[a-z][a-z0-9+.-]*:", target):
                         continue  # an absolute address
                     with self.subTest(document=document.name, link=target):
@@ -114,6 +118,21 @@ class LinkTest(unittest.TestCase):
                             self.assertIn(anchor, anchors(linked))
                     checked += 1
         self.assertGreater(checked, 10)
+
+    def test_the_readme_shows_every_image_with_a_text(self):
+        text = "\n".join(prose_lines(README))
+        images = _IMG_RE.findall(text)
+        sources = []
+        for image in images:
+            match = _SRC_RE.search(image)
+            self.assertIsNotNone(match, image)
+            sources.append(match.group(1))
+        shown = sorted(name for name in tracked_files() if name.startswith(".github/assets/"))
+        self.assertTrue(shown)
+        self.assertEqual(sorted(sources), shown)
+        for image in images:
+            with self.subTest(image=image):
+                self.assertRegex(image, r'\salt="[^"]{20,}"')
 
     def test_the_readme_links_every_document(self):
         text = README.read_text(encoding="utf-8")

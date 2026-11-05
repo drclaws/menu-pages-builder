@@ -18,10 +18,12 @@ ALLOWED_ACTIONS = {"actions/checkout", "actions/setup-python"}
 ALLOWED_EXPRESSIONS = re.compile(
     r"^(matrix\.[\w-]+|github\.ref|github\.workflow|github\.ref != 'refs/heads/main')$")
 
-#: Media file extensions that must never be tracked.
+#: Media file extensions: tracked only as the README images below.
 MEDIA_PATTERN = r"'\.(png|jpe?g|webp|gif|avif|mp4|mov|webm|ico|svg)$'"
+#: The README images, the only media allowed: png, jpg or gif directly in .github/assets/.
+IMAGES_PATTERN = r"'^\.github/assets/[^/]+\.(png|jpe?g|gif)$'"
 
-HYGIENE = "Repository hygiene (no tracked media, no tracked build output)"
+HYGIENE = "Repository hygiene (README images only, no tracked build output)"
 NO_CYRILLIC = "No Cyrillic in tracked files"
 UNIT_TESTS = "Unit tests"
 BUILD_MAIN = "Validate and build the main example set"
@@ -334,11 +336,77 @@ class CiWorkflowTest(unittest.TestCase):
         for listing in listings:
             self.assertRegex(listing, r"^git -c core\.quotePath=false ls-files -z\b")
         self.assertIn("must not contain line breaks or carriage returns", block)
-        # the whole tree: no path given to the listing, no directory filtered out
+        # the whole tree: no path given to the listing; the one filter that
+        # drops names keeps every medium but the README images
         self.assertIn(f'media="$(tracked | grep -aEi {MEDIA_PATTERN} || true)"', block)
-        self.assertNotRegex(block, r"grep\s+-[A-Za-z]*v")
+        self.assertIn(f'misplaced="$(grep -avE {IMAGES_PATTERN} <<<"$media" || true)"', block)
+        self.assertEqual(len(re.findall(r"grep\s+-[A-Za-z]*v", block)), 1)
+        self.assertIn("done < <(tracked .github/assets)", block)
+        # an assignment of its own: a failing `wc` stops the step under `set -e`
+        self.assertIn('size="$(wc -c < "$name")"', block)
         self.assertIn('output="$(tracked dist)"', block)
-        self.assertEqual(block.count("exit 1"), 3)
+        self.assertEqual(block.count("exit 1"), 4)
+
+    def run_hygiene(self, name, size, keep=True):
+        """Run the hygiene step in a new repository that tracks a LICENSE and
+        `name`, a file of `size` bytes, left on disk unless `keep` is false."""
+        script = textwrap.dedent(self.named[HYGIENE].partition("\n")[2])
+        environ = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+        with tempfile.TemporaryDirectory(prefix="menu-ci-test-") as temporary:
+            work = Path(temporary)
+            git = ["git", "-c", "init.defaultBranch=main", "-C", str(work)]
+            subprocess.run([*git, "init", "-q"], check=True, env=environ)
+            (work / "LICENSE").write_text("MIT\n", encoding="utf-8")
+            (work / name).parent.mkdir(parents=True, exist_ok=True)
+            with open(work / name, "wb") as handle:
+                handle.write(b"GIF89a\x00\xff")
+                handle.truncate(size)
+            subprocess.run([*git, "add", "--", "LICENSE", name], check=True, env=environ)
+            if not keep:
+                (work / name).unlink()
+            return subprocess.run(["bash", "-c", script], cwd=str(work), env=environ,
+                                  capture_output=True, text=True)
+
+    def test_hygiene_allows_media_only_as_readme_images(self):
+        cases = {
+            # name -> passes
+            "README.md": True,
+            ".github/assets/demo.gif": True,
+            ".github/assets/demo.png": True,
+            ".github/assets/demo.jpeg": True,
+            ".github/assets/demo image.gif": True,
+            "demo.gif": False,
+            "docs/demo image.gif": False,
+            "docs/demo.png": False,
+            ".github/demo.png": False,
+            ".github/assets/nested/demo.png": False,
+            ".github/assets/demo.mp4": False,
+            ".github/assets/demo.svg": False,
+            ".github/assets/demo.webp": False,
+            ".github/assets/demo.PNG": False,
+            "dist/index.html": False,
+        }
+        for name, passes in cases.items():
+            with self.subTest(name=name):
+                result = self.run_hygiene(name, 8)
+                self.assertEqual(result.returncode == 0, passes, result.stderr)
+                if not passes:
+                    self.assertIn(name, result.stderr)
+
+    def test_hygiene_refuses_a_readme_image_over_8_mb(self):
+        for name in (".github/assets/demo.gif", ".github/assets/demo image.gif"):
+            for size, passes in ((8 * 1024 * 1024, True), (8 * 1024 * 1024 + 1, False)):
+                with self.subTest(name=name, size=size):
+                    result = self.run_hygiene(name, size)
+                    self.assertEqual(result.returncode == 0, passes, result.stderr)
+                    if not passes:
+                        self.assertIn("must not exceed 8 MB", result.stderr)
+                        self.assertIn(name, result.stderr)
+
+    def test_hygiene_fails_when_a_readme_image_cannot_be_read(self):
+        result = self.run_hygiene(".github/assets/demo.gif", 8, keep=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("OK:", result.stdout)
 
     def test_cyrillic_check_lists_every_tracked_file(self):
         block = self.named[NO_CYRILLIC]
@@ -400,6 +468,45 @@ class CiWorkflowTest(unittest.TestCase):
             legacy = check("clean.txt", "legacy.txt")
             self.assertEqual(legacy.returncode, 1)
             self.assertEqual(legacy.stderr.decode("utf-8").splitlines()[1:], ["legacy.txt: not UTF-8"])
+
+            # README images with an image signature are checked by name only; the
+            # same bytes elsewhere and a text file named as an image are checked as text
+            tail = b"\x00\xff\xfe" + CYRILLIC_LETTER.encode("utf-8")
+            files = {
+                ".github/assets/demo.gif": b"GIF89a" + tail,
+                ".github/assets/old.gif": b"GIF87a" + tail,
+                ".github/assets/demo.png": b"\x89PNG\r\n\x1a\n" + tail,
+                ".github/assets/demo.jpg": b"\xff\xd8\xff\xe0" + tail,
+                ".github/assets/demo image.jpeg": b"\xff\xd8\xff\xdb" + tail,
+                ".github/assets/nested/demo.gif": b"GIF89a" + tail,
+                ".github/demo.gif": b"GIF89a" + tail,
+                "demo.gif": b"GIF89a" + tail,
+                ".github/assets/demo.txt": b"GIF89a" + tail,
+                f".github/assets/{CYRILLIC_LETTER}.gif": b"GIF89a" + tail,
+                ".github/assets/text.png": f"plain\n{CYRILLIC_LETTER}\n".encode("utf-8"),
+                ".github/assets/fake.gif": b"GIF8" + tail,
+            }
+            for name, content in files.items():
+                (work / name).parent.mkdir(parents=True, exist_ok=True)
+                (work / name).write_bytes(content)
+            images = check("clean.txt", ".github/assets/demo.gif", ".github/assets/old.gif",
+                           ".github/assets/demo.png", ".github/assets/demo.jpg",
+                           ".github/assets/demo image.jpeg")
+            self.assertEqual(images.returncode, 0, images.stderr)
+            self.assertEqual(images.stdout + images.stderr, b"")
+            elsewhere = check(".github/assets/nested/demo.gif", ".github/demo.gif", "demo.gif",
+                              ".github/assets/demo.txt", f".github/assets/{CYRILLIC_LETTER}.gif",
+                              ".github/assets/text.png", ".github/assets/fake.gif")
+            self.assertEqual(elsewhere.returncode, 1)
+            self.assertEqual(elsewhere.stderr.decode("utf-8").splitlines()[1:], [
+                ".github/assets/nested/demo.gif: not UTF-8",
+                ".github/demo.gif: not UTF-8",
+                "demo.gif: not UTF-8",
+                ".github/assets/demo.txt: not UTF-8",
+                f".github/assets/{CYRILLIC_LETTER}.gif: in the file name",
+                ".github/assets/text.png:2",
+                ".github/assets/fake.gif: not UTF-8",
+            ])
 
     def test_unit_tests_discover_the_tests_package(self):
         tests = [block for block in self.runs if "unittest" in block]
